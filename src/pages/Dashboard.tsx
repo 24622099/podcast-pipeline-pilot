@@ -2,20 +2,23 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus, ArrowRight, Loader } from "lucide-react";
 import { usePodcast } from "@/contexts/PodcastContext";
 import StatusBadge from "@/components/StatusBadge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 
 const Dashboard = () => {
   const { projects, createProject, setCurrentProject, isLoading } = usePodcast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectTopic, setNewProjectTopic] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleOpenProject = (projectId: string) => {
     const project = projects.find(p => p.id === projectId);
@@ -28,15 +31,57 @@ const Dashboard = () => {
   const handleCreateProject = async () => {
     if (!newProjectName.trim() || !newProjectTopic.trim()) return;
     
+    setIsSubmitting(true);
+    
     try {
+      // Send data to n8n webhook
+      const webhookUrl = "https://n8n.chichung.studio/webhook/NewProject";
+      
+      // Prepare the data to send
+      const webhookData = {
+        projectName: newProjectName,
+        projectTopic: newProjectTopic,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log("Sending data to n8n webhook:", webhookData);
+      
+      // Make the webhook request
+      const webhookResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(webhookData),
+        mode: "no-cors", // Add this to handle CORS
+      });
+      
+      // Since we're using no-cors, we proceed assuming success
+      toast({
+        title: "Request Sent",
+        description: "Your project has been submitted to the workflow engine.",
+      });
+      
+      // Create the project in our app state
       const newProject = await createProject(newProjectName, newProjectTopic);
+      
+      // Close the dialog and reset form
       setIsCreateDialogOpen(false);
       setNewProjectName("");
       setNewProjectTopic("");
+      
+      // Navigate to the new project
       setCurrentProject(newProject);
       navigate(`/project/${newProject.id}`);
     } catch (error) {
       console.error("Failed to create project:", error);
+      toast({
+        title: "Error",
+        description: "There was an error creating your project. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -119,6 +164,7 @@ const Dashboard = () => {
                 value={newProjectName}
                 onChange={(e) => setNewProjectName(e.target.value)}
                 placeholder="e.g., Podcast W12 - Technology Trends"
+                disabled={isSubmitting}
               />
             </div>
             <div className="space-y-2">
@@ -129,6 +175,7 @@ const Dashboard = () => {
                 onChange={(e) => setNewProjectTopic(e.target.value)}
                 placeholder="Enter a detailed description of your podcast topic..."
                 rows={4}
+                disabled={isSubmitting}
               />
             </div>
           </div>
@@ -137,14 +184,21 @@ const Dashboard = () => {
             <Button
               variant="outline"
               onClick={() => setIsCreateDialogOpen(false)}
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreateProject}
-              disabled={isLoading || !newProjectName.trim() || !newProjectTopic.trim()}
+              disabled={isSubmitting || isLoading || !newProjectName.trim() || !newProjectTopic.trim()}
             >
-              Start & Generate Draft Script
+              {isSubmitting ? (
+                <>
+                  <Loader className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                </>
+              ) : (
+                "Start & Generate Draft Script"
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>
