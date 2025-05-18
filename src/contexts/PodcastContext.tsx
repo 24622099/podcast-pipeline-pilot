@@ -1,11 +1,24 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 
+// Define the workflow stages as a type and also export as constants
+export type WorkflowStage = "initialize" | "draft_script" | "approve_script" | "draft_image_prompt" | "approve_image_prompt" | "media_finalized";
+
+// Export workflowStages as an array of objects with id and label
+export const workflowStages = [
+  { id: "initialize", label: "Initialize" },
+  { id: "draft_script", label: "Draft Script" },
+  { id: "approve_script", label: "Approve Script" },
+  { id: "draft_image_prompt", label: "Draft Image" },
+  { id: "approve_image_prompt", label: "Approve Image" },
+  { id: "media_finalized", label: "Finalized" },
+];
+
 interface Project {
   id: string;
   name: string;
   topic: string;
-  status: "initialize" | "draft_script" | "approve_script" | "draft_image_prompt" | "approve_image_prompt" | "media_finalized";
+  status: WorkflowStage; // Now using our exported type
   script?: string;
   imagePrompt?: string;
   imageUrl?: string;
