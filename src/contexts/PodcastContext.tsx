@@ -1,197 +1,72 @@
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { useToast } from "@/components/ui/use-toast";
+import React, { createContext, useContext, useState, useEffect } from "react";
 
-export interface Project {
+interface Project {
   id: string;
   name: string;
   topic: string;
-  status: WorkflowStage;
+  status: "initialize" | "draft_script" | "approve_script" | "draft_image_prompt" | "approve_image_prompt" | "media_finalized";
   script?: string;
   imagePrompt?: string;
   imageUrl?: string;
   videoUrl?: string;
-  createdAt: string;
-  updatedAt: string;
+  scriptData?: any; // This will hold the structured script data from the webhook
 }
-
-export type WorkflowStage = 
-  | "initialize"
-  | "draft_script"
-  | "approve_script" 
-  | "draft_image_prompt"
-  | "approve_image_prompt"
-  | "media_finalized";
-
-export const workflowStages: { id: WorkflowStage; label: string }[] = [
-  { id: "initialize", label: "Initialize" },
-  { id: "draft_script", label: "Draft Script" },
-  { id: "approve_script", label: "Approve Script" },
-  { id: "draft_image_prompt", label: "Draft Image Prompt" },
-  { id: "approve_image_prompt", label: "Approve Image Prompt" },
-  { id: "media_finalized", label: "Media Finalized" }
-];
 
 interface PodcastContextType {
   projects: Project[];
   currentProject: Project | null;
   isLoading: boolean;
-  setCurrentProject: (project: Project | null) => void;
   createProject: (name: string, topic: string) => Promise<Project>;
-  updateProject: (updatedProject: Partial<Project> & { id: string }) => Promise<Project>;
+  setCurrentProject: (project: Project) => void;
   synchronizeProject: (projectId: string) => Promise<void>;
-  approveScript: (projectId: string, script: string) => Promise<void>;
+  approveScript: (projectId: string, script: string, scriptData?: any) => Promise<void>;
   approveImagePrompt: (projectId: string, imagePrompt: string) => Promise<void>;
-  fetchProjects: () => Promise<void>;
 }
 
-const defaultContext: PodcastContextType = {
-  projects: [],
-  currentProject: null,
-  isLoading: false,
-  setCurrentProject: () => {},
-  createProject: async () => ({ 
-    id: "", 
-    name: "", 
-    topic: "", 
-    status: "initialize", 
-    createdAt: "", 
-    updatedAt: "" 
-  }),
-  updateProject: async () => ({ 
-    id: "", 
-    name: "", 
-    topic: "", 
-    status: "initialize", 
-    createdAt: "", 
-    updatedAt: "" 
-  }),
-  synchronizeProject: async () => {},
-  approveScript: async () => {},
-  approveImagePrompt: async () => {},
-  fetchProjects: async () => {},
+const PodcastContext = createContext<PodcastContextType | undefined>(undefined);
+
+export const usePodcast = () => {
+  const context = useContext(PodcastContext);
+  if (!context) {
+    throw new Error("usePodcast must be used within a PodcastProvider");
+  }
+  return context;
 };
 
-const PodcastContext = createContext<PodcastContextType>(defaultContext);
-
-// Mock initial data
-const initialProjects: Project[] = [
-  {
-    id: "1",
-    name: "Podcast W10 - AI in Education",
-    topic: "AI Applications in English Learning",
-    status: "draft_script",
-    script: "This is a sample podcast script about AI applications in English learning...",
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    id: "2",
-    name: "Podcast W11 - Future of Work",
-    topic: "Remote Work Technologies in 2025",
-    status: "approve_image_prompt",
-    script: "This is an approved script about remote work technologies...",
-    imagePrompt: "Create an image depicting a modern remote work setup with holographic displays and AI assistants",
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "3",
-    name: "Podcast W9 - Health Tech",
-    topic: "Wearable Health Monitors",
-    status: "media_finalized",
-    script: "An in-depth discussion about the latest wearable health monitoring technologies...",
-    imagePrompt: "High-quality wearable health technology devices displayed on a minimalist background",
-    imageUrl: "https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5",
-    videoUrl: "https://example.com/video/podcast-w9-health-tech",
-    createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-];
-
-export const PodcastProvider = ({ children }: { children: ReactNode }) => {
-  const [projects, setProjects] = useState<Project[]>(initialProjects);
+export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Load projects on mount
+  // Load projects from localStorage on mount
   useEffect(() => {
-    // In a real implementation, this would fetch from an API
-    // For now we use our mock data
+    const savedProjects = localStorage.getItem("podcastProjects");
+    if (savedProjects) {
+      setProjects(JSON.parse(savedProjects));
+    }
   }, []);
 
-  // Mock API functions
+  // Save projects to localStorage when they change
+  useEffect(() => {
+    localStorage.setItem("podcastProjects", JSON.stringify(projects));
+  }, [projects]);
+
   const createProject = async (name: string, topic: string): Promise<Project> => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      
+      // In a real implementation, this would make an API request
+      // For now, we'll just create a project locally
       const newProject: Project = {
-        id: `${projects.length + 1}`,
+        id: Math.random().toString(36).substring(2, 11),
         name,
         topic,
-        status: "draft_script",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        status: "initialize",
       };
       
-      setProjects(prev => [...prev, newProject]);
-      toast({
-        title: "Project Created",
-        description: "Script generation has started. Please wait for the draft.",
-      });
-      
+      setProjects((prev) => [...prev, newProject]);
       return newProject;
-    } catch (error) {
-      console.error("Error creating project:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to create project. Please try again.",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const updateProject = async (updatedProject: Partial<Project> & { id: string }): Promise<Project> => {
-    setIsLoading(true);
-    
-    try {
-      // In a real implementation, this would be an API call
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-      
-      const updatedProjects = projects.map(project => 
-        project.id === updatedProject.id 
-          ? { ...project, ...updatedProject, updatedAt: new Date().toISOString() }
-          : project
-      );
-      
-      setProjects(updatedProjects);
-      
-      const updated = updatedProjects.find(p => p.id === updatedProject.id);
-      if (currentProject?.id === updatedProject.id) {
-        setCurrentProject(updated || null);
-      }
-      
-      toast({
-        title: "Project Updated",
-        description: "Project changes have been saved.",
-      });
-      
-      return updated as Project;
-    } catch (error) {
-      console.error("Error updating project:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to update project. Please try again.",
-      });
-      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -201,63 +76,109 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, this would be an API call to sync with n8n
-      await new Promise(resolve => setTimeout(resolve, 1200)); // Simulate network delay
+      // This would make an API request to synchronize the project with the backend
+      // For now, we'll just update the status to simulate progress
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            // Simulate receiving data from webhook
+            const scriptData = p.status === "initialize" ? [
+              {
+                "Project Name": p.name,
+                "Project ID": p.id,
+                "Date Created": new Date().toLocaleDateString(),
+                "Keyword ID": "12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
+                "Keyword URL": "https://docs.google.com/spreadsheets/d/12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
+                "Folder ID": "12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
+                "Folder URL": "https://drive.google.com/drive/folders/12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
+                "Video ID": "1eTrT-btNgrVmSTrea46fH7XCERrRHVf79l2NcAjseTw",
+                "Video URL": "https://docs.google.com/spreadsheets/d/1eTrT-btNgrVmSTrea46fH7XCERrRHVf79l2NcAjseTw",
+                "Image ID": "11DhLF3m8EZI-dkhBzE8o5PLTHlUfIZCIepKHVzo2fa4",
+                "Image URL": "https://docs.google.com/spreadsheets/d/11DhLF3m8EZI-dkhBzE8o5PLTHlUfIZCIepKHVzo2fa4",
+                "ScriptDoc ID": "1iaLwveYo_ErkBuDlIdD0g-KBB25OTIBKC_AtQHAsrfY",
+                "ScriptDoc URL": "https://docs.google.com/document/d/1iaLwveYo_ErkBuDlIdD0g-KBB25OTIBKC_AtQHAsrfY",
+                "Opening Hook": "This is the AI generated opening hook for the topic: " + p.topic,
+                "Part 1": "This is AI generated content for Part 1 about " + p.topic,
+                "Part 2": "This is AI generated content for Part 2 about " + p.topic,
+                "Part 3": "This is AI generated content for Part 3 about " + p.topic,
+                "Vocab 1": "AI_Word1: Definition and example related to " + p.topic,
+                "Vocab 2": "AI_Word2: Definition and example related to " + p.topic,
+                "Vocab 3": "AI_Word3: Definition and example related to " + p.topic,
+                "Vocab 4": "AI_Word4: Definition and example related to " + p.topic,
+                "Vocab 5": "AI_Word5: Definition and example related to " + p.topic,
+                "Grammar Topic": "AI generated grammar explanation and examples about " + p.topic
+              }
+            ] : p.scriptData;
+            
+            // Update the project status based on current state
+            let nextStatus = p.status;
+            switch (p.status) {
+              case "initialize":
+                nextStatus = "draft_script";
+                break;
+              case "draft_script":
+                // Stay in the same stage until approved
+                break;
+              case "approve_script":
+                nextStatus = "draft_image_prompt";
+                break;
+              case "draft_image_prompt":
+                // Stay in the same stage until approved
+                break;
+              case "approve_image_prompt":
+                nextStatus = "media_finalized";
+                break;
+              // If already finalized, no change
+            }
+            
+            return {
+              ...p,
+              status: nextStatus,
+              scriptData: scriptData
+            };
+          }
+          return p;
+        })
+      );
       
-      toast({
-        title: "Project Synchronized",
-        description: "Project data has been synchronized with the server.",
-      });
-    } catch (error) {
-      console.error("Error synchronizing project:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to synchronize project. Please try again.",
-      });
-      throw error;
+      // If the current project is the one being synchronized, update it
+      if (currentProject && currentProject.id === projectId) {
+        const updatedProject = projects.find(p => p.id === projectId);
+        if (updatedProject) setCurrentProject(updatedProject);
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const approveScript = async (projectId: string, script: string): Promise<void> => {
+  const approveScript = async (projectId: string, script: string, scriptData?: any): Promise<void> => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, this would call the n8n webhook
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      
-      const updatedProjects = projects.map(project => 
-        project.id === projectId 
-          ? { 
-              ...project, 
-              script, 
-              status: "draft_image_prompt" as WorkflowStage,
-              updatedAt: new Date().toISOString() 
-            }
-          : project
+      // This would make an API request to approve the script
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            return {
+              ...p,
+              status: "approve_script",
+              script,
+              scriptData: scriptData || p.scriptData
+            };
+          }
+          return p;
+        })
       );
       
-      setProjects(updatedProjects);
-      
-      const updated = updatedProjects.find(p => p.id === projectId);
-      if (currentProject?.id === projectId) {
-        setCurrentProject(updated || null);
+      // Update current project if it's the one being approved
+      if (currentProject && currentProject.id === projectId) {
+        setCurrentProject({
+          ...currentProject,
+          status: "approve_script",
+          script,
+          scriptData: scriptData || currentProject.scriptData
+        });
       }
-      
-      toast({
-        title: "Script Approved",
-        description: "Your script has been approved. Image prompt generation has started.",
-      });
-    } catch (error) {
-      console.error("Error approving script:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to approve script. Please try again.",
-      });
-      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -267,68 +188,28 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, this would call the n8n webhook
-      await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate network delay
-      
-      const updatedProjects = projects.map(project => 
-        project.id === projectId 
-          ? { 
-              ...project, 
-              imagePrompt, 
-              status: "media_finalized" as WorkflowStage,
-              imageUrl: "https://images.unsplash.com/photo-1721322800607-8c38375eef04", // Mock URL
-              videoUrl: "https://example.com/video/generated-from-prompt", // Mock URL
-              updatedAt: new Date().toISOString() 
-            }
-          : project
+      // This would make an API request to approve the image prompt
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            return {
+              ...p,
+              status: "approve_image_prompt",
+              imagePrompt,
+            };
+          }
+          return p;
+        })
       );
       
-      setProjects(updatedProjects);
-      
-      const updated = updatedProjects.find(p => p.id === projectId);
-      if (currentProject?.id === projectId) {
-        setCurrentProject(updated || null);
+      // Update current project if it's the one being approved
+      if (currentProject && currentProject.id === projectId) {
+        setCurrentProject({
+          ...currentProject,
+          status: "approve_image_prompt",
+          imagePrompt,
+        });
       }
-      
-      toast({
-        title: "Image Prompt Approved",
-        description: "Your image prompt has been approved. Media generation is complete.",
-      });
-    } catch (error) {
-      console.error("Error approving image prompt:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to approve image prompt. Please try again.",
-      });
-      throw error;
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const fetchProjects = async (): Promise<void> => {
-    setIsLoading(true);
-    
-    try {
-      // In a real implementation, this would fetch from an API
-      await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-      
-      // Here we're just re-using our mock data
-      // In a real app this would be an API call
-      
-      toast({
-        title: "Projects Refreshed",
-        description: "Project list has been updated.",
-      });
-    } catch (error) {
-      console.error("Error fetching projects:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to refresh projects. Please try again.",
-      });
-      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -340,18 +221,14 @@ export const PodcastProvider = ({ children }: { children: ReactNode }) => {
         projects,
         currentProject,
         isLoading,
-        setCurrentProject,
         createProject,
-        updateProject,
+        setCurrentProject,
         synchronizeProject,
         approveScript,
         approveImagePrompt,
-        fetchProjects,
       }}
     >
       {children}
     </PodcastContext.Provider>
   );
 };
-
-export const usePodcast = () => useContext(PodcastContext);

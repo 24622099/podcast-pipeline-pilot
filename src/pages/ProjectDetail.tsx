@@ -10,6 +10,7 @@ import { usePodcast } from "@/contexts/PodcastContext";
 import WorkflowProgress from "@/components/WorkflowProgress";
 import { Check, Cloud, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import ScriptEditor, { ScriptWebhookResponse } from "@/components/ScriptEditor";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -28,6 +29,9 @@ const ProjectDetail = () => {
   const [projectTopic, setProjectTopic] = useState("");
   const [script, setScript] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
+  
+  // Webhook data state
+  const [webhookData, setWebhookData] = useState<ScriptWebhookResponse | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -38,25 +42,24 @@ const ProjectDetail = () => {
         setProjectTopic(project.topic);
         setScript(project.script || "");
         setImagePrompt(project.imagePrompt || "");
+        
+        // Initialize webhook data if it exists
+        if (project.scriptData) {
+          try {
+            const parsedData = typeof project.scriptData === 'string' 
+              ? JSON.parse(project.scriptData)[0] 
+              : project.scriptData[0];
+            
+            setWebhookData(parsedData);
+          } catch (error) {
+            console.error("Error parsing script data:", error);
+          }
+        }
       } else {
         navigate("/");
       }
     }
   }, [id, projects, setCurrentProject, navigate]);
-
-  if (!currentProject) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-6">
-        <div className="w-full max-w-4xl">
-          <div className="animate-pulse space-y-4">
-            <Skeleton className="h-12 w-3/4" />
-            <Skeleton className="h-8 w-1/2" />
-            <Skeleton className="h-32 w-full" />
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   const handleSynchronize = async () => {
     if (currentProject) {
@@ -64,9 +67,9 @@ const ProjectDetail = () => {
     }
   };
 
-  const handleSubmitScript = async () => {
-    if (currentProject && script.trim()) {
-      await approveScript(currentProject.id, script);
+  const handleSubmitScript = async (compiledScript: string, updatedData: ScriptWebhookResponse) => {
+    if (currentProject) {
+      await approveScript(currentProject.id, compiledScript, [updatedData]);
     }
   };
 
@@ -78,7 +81,7 @@ const ProjectDetail = () => {
 
   // Determine which stage content to render based on the current project status
   const renderStageContent = () => {
-    switch (currentProject.status) {
+    switch (currentProject?.status) {
       case "initialize":
         return (
           <div className="space-y-4">
@@ -123,24 +126,37 @@ const ProjectDetail = () => {
             <h2 className="text-xl font-semibold">
               Step {currentProject.status === "draft_script" ? "2" : "3"}: Review & Edit Script
             </h2>
-            <p className="text-gray-600 text-sm">
-              Edit the draft script below as needed, then approve it to move to the next stage.
-            </p>
-            <Textarea
-              value={script}
-              onChange={(e) => setScript(e.target.value)}
-              placeholder="The script is being generated..."
-              className="min-h-[300px] font-mono text-sm"
-              disabled={isLoading}
-            />
-            <Button 
-              onClick={handleSubmitScript} 
-              className="mt-4" 
-              size="lg" 
-              disabled={!script.trim() || isLoading}
-            >
-              <Check className="mr-2 h-5 w-5" /> Save & Approve Script
-            </Button>
+            
+            {webhookData ? (
+              <ScriptEditor 
+                webhookData={webhookData} 
+                onSave={handleSubmitScript}
+                onSaveDraft={handleSynchronize}
+                isLoading={isLoading}
+              />
+            ) : (
+              // Fallback to the original script editor if webhook data is not available
+              <>
+                <p className="text-gray-600 text-sm">
+                  Edit the draft script below as needed, then approve it to move to the next stage.
+                </p>
+                <Textarea
+                  value={script}
+                  onChange={(e) => setScript(e.target.value)}
+                  placeholder="The script is being generated..."
+                  className="min-h-[300px] font-mono text-sm"
+                  disabled={isLoading}
+                />
+                <Button 
+                  onClick={() => approveScript(currentProject.id, script)} 
+                  className="mt-4" 
+                  size="lg" 
+                  disabled={!script.trim() || isLoading}
+                >
+                  <Check className="mr-2 h-5 w-5" /> Save & Approve Script
+                </Button>
+              </>
+            )}
           </div>
         );
 
@@ -255,8 +271,8 @@ const ProjectDetail = () => {
         <div className="border-b px-6 py-5">
           <div className="flex flex-col md:flex-row md:justify-between md:items-center space-y-4 md:space-y-0">
             <div>
-              <h1 className="text-xl font-bold text-gray-900">{currentProject.name}</h1>
-              <p className="text-gray-600 mt-1">{currentProject.topic}</p>
+              <h1 className="text-xl font-bold text-gray-900">{currentProject?.name}</h1>
+              <p className="text-gray-600 mt-1">{currentProject?.topic}</p>
             </div>
             <Button
               variant="outline"
@@ -275,7 +291,7 @@ const ProjectDetail = () => {
 
           {/* Workflow progress bar */}
           <div className="mt-6">
-            <WorkflowProgress currentStage={currentProject.status} />
+            <WorkflowProgress currentStage={currentProject?.status || "initialize"} />
           </div>
         </div>
 

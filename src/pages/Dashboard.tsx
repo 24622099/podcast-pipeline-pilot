@@ -35,9 +35,9 @@ const Dashboard = () => {
     
     try {
       // Send data to n8n webhook
-      const webhookUrl = "https://n8n.chichung.studio/webhook-test/NewProject";
+      const webhookUrl = "https://n8n.chichung.studio/webhook/NewProject";
       
-      // Prepare the data to send
+      // Prepare the data to send - sending as direct JSON object, not stringified
       const webhookData = {
         projectName: newProjectName,
         projectTopic: newProjectTopic,
@@ -46,13 +46,13 @@ const Dashboard = () => {
       
       console.log("Sending data to n8n webhook:", webhookData);
       
-      // Make the webhook request
+      // Make the webhook request with proper Content-Type header
       const webhookResponse = await fetch(webhookUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(webhookData),
+        body: JSON.stringify(webhookData), // This sends the object as proper JSON
         mode: "no-cors", // Add this to handle CORS
       });
       
