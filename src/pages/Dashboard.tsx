@@ -35,7 +35,7 @@ const Dashboard = () => {
     
     try {
       // Send data to n8n webhook
-      const webhookUrl = "https://n8n.chichung.studio/webhook/NewProject";
+      const webhookUrl = "https://n8n.chichung.studio/webhook-test/NewProject";
       
       // Prepare the data to send
       const webhookData = {
