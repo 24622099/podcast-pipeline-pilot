@@ -37,7 +37,7 @@ const Dashboard = () => {
       // Send data to n8n webhook
       const webhookUrl = "https://n8n.chichung.studio/webhook/NewProject";
       
-      // Prepare the data to send - sending as direct JSON object, not stringified
+      // Prepare the data to send - sending as direct JSON object
       const webhookData = {
         projectName: newProjectName,
         projectTopic: newProjectTopic,
@@ -53,7 +53,7 @@ const Dashboard = () => {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(webhookData), // This sends the object as proper JSON
-        mode: "no-cors", // Add this to handle CORS
+        mode: "no-cors", // This is needed for CORS handling
       });
       
       // Since we're using no-cors, we proceed assuming success

@@ -90,7 +90,42 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     try {
       // This would make an API request to synchronize the project with the backend
-      // For now, we'll just update the status to simulate progress
+      // For now, we'll manually update the status to simulate progress
+      
+      // For testing, we can send a webhook to n8n to simulate backend processing
+      const project = projects.find(p => p.id === projectId);
+      if (project && project.status === "initialize") {
+        try {
+          // Send data to n8n webhook for synchronization
+          const webhookUrl = "https://n8n.chichung.studio/webhook/SyncProject";
+          
+          const webhookData = {
+            projectId: project.id,
+            projectName: project.name,
+            projectTopic: project.topic,
+            currentStatus: project.status,
+            timestamp: new Date().toISOString()
+          };
+          
+          console.log("Synchronizing project with n8n webhook:", webhookData);
+          
+          // Make the webhook request
+          await fetch(webhookUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(webhookData),
+            mode: "no-cors", // Add this to handle CORS
+          });
+          
+          // We continue with local updates regardless of webhook result
+          console.log("Webhook request sent for project synchronization");
+        } catch (error) {
+          console.error("Error sending webhook for synchronization:", error);
+        }
+      }
+      
       setProjects((prev) =>
         prev.map((p) => {
           if (p.id === projectId) {

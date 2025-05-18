@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import WorkflowProgress from "@/components/WorkflowProgress";
 import { Check, Cloud, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import ScriptEditor, { ScriptWebhookResponse } from "@/components/ScriptEditor";
+import { useToast } from "@/components/ui/use-toast";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -24,6 +24,7 @@ const ProjectDetail = () => {
     approveScript,
     approveImagePrompt,
   } = usePodcast();
+  const { toast } = useToast();
 
   const [projectName, setProjectName] = useState("");
   const [projectTopic, setProjectTopic] = useState("");
@@ -63,7 +64,43 @@ const ProjectDetail = () => {
 
   const handleSynchronize = async () => {
     if (currentProject) {
-      await synchronizeProject(currentProject.id);
+      try {
+        await synchronizeProject(currentProject.id);
+        toast({
+          title: "Project Synchronized",
+          description: "Your project has been synchronized successfully.",
+        });
+      } catch (error) {
+        console.error("Error synchronizing project:", error);
+        toast({
+          title: "Synchronization Failed",
+          description: "There was an error synchronizing your project.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const handleInitializeProject = async () => {
+    if (currentProject && currentProject.status === "initialize") {
+      try {
+        toast({
+          title: "Processing",
+          description: "Generating draft script. This may take a moment...",
+        });
+        await synchronizeProject(currentProject.id);
+        toast({
+          title: "Success",
+          description: "Draft script has been generated successfully.",
+        });
+      } catch (error) {
+        console.error("Error initializing project:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem generating the draft script.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -112,9 +149,16 @@ const ProjectDetail = () => {
             <Button 
               className="mt-6" 
               size="lg" 
+              onClick={handleInitializeProject}
               disabled={!projectName.trim() || !projectTopic.trim() || isLoading}
             >
-              Start & Generate Draft Script
+              {isLoading ? (
+                <>
+                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                </>
+              ) : (
+                "Start & Generate Draft Script"
+              )}
             </Button>
           </div>
         );
