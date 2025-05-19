@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,8 @@ import { usePodcast } from "@/contexts/PodcastContext";
 import WorkflowProgress from "@/components/WorkflowProgress";
 import { Check, Cloud, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import ScriptEditor, { ScriptWebhookResponse } from "@/components/ScriptEditor";
+import ScriptEditor from "@/components/ScriptEditor";
+import { ScriptWebhookResponse } from "@/types/podcast";
 import { useToast } from "@/components/ui/use-toast";
 
 const ProjectDetail = () => {
