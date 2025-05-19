@@ -97,7 +97,7 @@ const ProjectDetail = () => {
         console.error("Error initializing project:", error);
         toast({
           title: "Error",
-          description: "There was a problem generating the draft script.",
+          description: "There was a problem generating the draft script. Please check the webhook URL.",
           variant: "destructive",
         });
       }

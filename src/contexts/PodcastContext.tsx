@@ -60,7 +60,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const project = projects.find(p => p.id === projectId);
       
       if (project) {
-        // Send data to webhook if needed
+        // Send data to webhook
         await synchronizeProjectService(project);
         
         // Update project status
@@ -91,6 +91,9 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (updatedProject) setCurrentProject(updatedProject);
         }
       }
+    } catch (error) {
+      console.error("Failed to synchronize project:", error);
+      throw error; // Propagate the error to be handled by the caller
     } finally {
       setIsLoading(false);
     }

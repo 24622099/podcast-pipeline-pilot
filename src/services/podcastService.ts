@@ -33,32 +33,35 @@ export const createProjectService = async (name: string, topic: string): Promise
 export const synchronizeProjectService = async (project: Project): Promise<void> => {
   if (project && project.status === "initialize") {
     try {
-      // Send data to n8n webhook for synchronization
-      const webhookUrl = "https://n8n.chichung.studio/webhook/SyncProject";
+      // Updated webhook URL
+      const webhookUrl = "https://n8n.chichung.studio/webhook-test/NewProject";
       
-      const webhookData = {
-        projectId: project.id,
+      // Format data as separate JSON fields instead of a single body
+      const formData = new FormData();
+      formData.append('projectId', project.id);
+      formData.append('projectName', project.name);
+      formData.append('projectTopic', project.topic);
+      formData.append('currentStatus', project.status);
+      formData.append('timestamp', new Date().toISOString());
+      
+      console.log("Synchronizing project with n8n webhook:", {
         projectName: project.name,
         projectTopic: project.topic,
-        currentStatus: project.status,
         timestamp: new Date().toISOString()
-      };
+      });
       
-      console.log("Synchronizing project with n8n webhook:", webhookData);
-      
-      // Make the webhook request
+      // Make the webhook request with separate JSON fields
       await fetch(webhookUrl, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(webhookData),
-        mode: "no-cors", // Add this to handle CORS
+        body: formData,
+        // Remove content-type header to let the browser set it with the boundary parameter for FormData
+        mode: "cors", // Changed from "no-cors" to "cors" to properly handle the response
       });
       
       console.log("Webhook request sent for project synchronization");
     } catch (error) {
       console.error("Error sending webhook for synchronization:", error);
+      throw error; // Re-throw to allow the caller to handle the error
     }
   }
 };
