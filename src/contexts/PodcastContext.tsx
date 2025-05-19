@@ -1,6 +1,5 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Project, PodcastContextType } from "@/types/podcast";
+import { Project, PodcastContextType, WorkflowStage, workflowStages } from "@/types/podcast";
 import { 
   loadProjects, 
   saveProjects,
@@ -10,9 +9,10 @@ import {
   generateSampleScriptData
 } from "@/services/podcastService";
 
-// Re-export types from the types file to maintain backward compatibility
-export { WorkflowStage, workflowStages } from "@/types/podcast";
-export type { Project, PodcastContextType } from "@/types/podcast";
+// Re-export constants from the types file
+export { workflowStages } from "@/types/podcast";
+// Re-export types with proper syntax for isolatedModules
+export type { WorkflowStage, Project, PodcastContextType } from "@/types/podcast";
 
 const PodcastContext = createContext<PodcastContextType | undefined>(undefined);
 
