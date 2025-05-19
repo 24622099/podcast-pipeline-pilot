@@ -1,18 +1,24 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
-import { Project, PodcastContextType, WorkflowStage, workflowStages } from "@/types/podcast";
+import { 
+  Project, 
+  PodcastContextType, 
+  WorkflowStage, 
+  workflowStages,
+  ScriptWebhookResponse 
+} from "@/types/podcast";
 import { 
   loadProjects, 
   saveProjects,
   createProjectService,
   synchronizeProjectService,
   getNextStatus,
-  generateSampleScriptData
 } from "@/services/podcastService";
 
 // Re-export constants from the types file
 export { workflowStages } from "@/types/podcast";
 // Re-export types with proper syntax for isolatedModules
-export type { WorkflowStage, Project, PodcastContextType } from "@/types/podcast";
+export type { WorkflowStage, Project, PodcastContextType, ScriptWebhookResponse } from "@/types/podcast";
 
 const PodcastContext = createContext<PodcastContextType | undefined>(undefined);
 
@@ -60,25 +66,20 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
       const project = projects.find(p => p.id === projectId);
       
       if (project) {
-        // Send data to webhook
-        await synchronizeProjectService(project);
+        // Send data to webhook and get response
+        const webhookResponse = await synchronizeProjectService(project);
         
         // Update project status
         setProjects((prev) =>
           prev.map((p) => {
             if (p.id === projectId) {
-              // Generate sample script data for testing
-              const scriptData = p.status === "initialize" 
-                ? generateSampleScriptData(p.name, p.id, p.topic)
-                : p.scriptData;
-              
               // Get the next status
               const nextStatus = getNextStatus(p.status);
               
               return {
                 ...p,
                 status: nextStatus,
-                scriptData: scriptData
+                scriptData: webhookResponse // Store the actual webhook response
               };
             }
             return p;
@@ -99,7 +100,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  const approveScript = async (projectId: string, script: string, scriptData?: any): Promise<void> => {
+  const approveScript = async (projectId: string, script: string, scriptData?: ScriptWebhookResponse): Promise<void> => {
     setIsLoading(true);
     
     try {

@@ -5,33 +5,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, Save, RefreshCw } from "lucide-react";
-
-// Interface for the webhook response structure
-export interface ScriptWebhookResponse {
-  "Project Name": string;
-  "Keyword ID": string;
-  "Keyword URL": string;
-  "Date Created": string;
-  "Project ID": string;
-  "Folder ID": string;
-  "Folder URL": string;
-  "Video ID": string;
-  "Video URL": string;
-  "Image ID": string;
-  "Image URL": string;
-  "ScriptDoc ID": string;
-  "ScriptDoc URL": string;
-  "Opening Hook": string;
-  "Part 1": string;
-  "Part 2": string;
-  "Part 3": string;
-  "Vocab 1": string;
-  "Vocab 2": string;
-  "Vocab 3": string;
-  "Vocab 4": string;
-  "Vocab 5": string;
-  "Grammar Topic": string;
-}
+import { ScriptWebhookResponse } from "@/types/podcast";
 
 interface ScriptEditorProps {
   webhookData: ScriptWebhookResponse;
@@ -112,7 +86,7 @@ ${scriptFields.grammarTopic}
       `.trim();
       
       // Create updated webhook data
-      const updatedWebhookData = {
+      const updatedWebhookData: ScriptWebhookResponse = {
         ...webhookData,
         "Opening Hook": scriptFields.openingHook,
         "Part 1": scriptFields.part1,

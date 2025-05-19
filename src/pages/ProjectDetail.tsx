@@ -46,21 +46,20 @@ const ProjectDetail = () => {
         
         // Initialize webhook data if it exists
         if (project.scriptData) {
-          try {
-            const parsedData = typeof project.scriptData === 'string' 
-              ? JSON.parse(project.scriptData)[0] 
-              : project.scriptData[0];
-            
-            setWebhookData(parsedData);
-          } catch (error) {
-            console.error("Error parsing script data:", error);
-          }
+          setWebhookData(project.scriptData);
         }
       } else {
         navigate("/");
       }
     }
   }, [id, projects, setCurrentProject, navigate]);
+
+  // Update webhook data when current project changes
+  useEffect(() => {
+    if (currentProject && currentProject.scriptData) {
+      setWebhookData(currentProject.scriptData);
+    }
+  }, [currentProject]);
 
   const handleSynchronize = async () => {
     if (currentProject) {
@@ -106,7 +105,7 @@ const ProjectDetail = () => {
 
   const handleSubmitScript = async (compiledScript: string, updatedData: ScriptWebhookResponse) => {
     if (currentProject) {
-      await approveScript(currentProject.id, compiledScript, [updatedData]);
+      await approveScript(currentProject.id, compiledScript, updatedData);
     }
   };
 

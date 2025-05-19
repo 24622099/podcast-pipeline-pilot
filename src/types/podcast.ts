@@ -12,6 +12,33 @@ export const workflowStages = [
   { id: "media_finalized", label: "Finalized" },
 ];
 
+// Interface for the webhook response structure
+export interface ScriptWebhookResponse {
+  "Project Name": string;
+  "Keyword ID": string;
+  "Keyword URL": string;
+  "Date Created": string;
+  "Project ID": string;
+  "Folder ID": string;
+  "Folder URL": string;
+  "Video ID": string;
+  "Video URL": string;
+  "Image ID": string;
+  "Image URL": string;
+  "ScriptDoc ID": string;
+  "ScriptDoc URL": string;
+  "Opening Hook": string;
+  "Part 1": string;
+  "Part 2": string;
+  "Part 3": string;
+  "Vocab 1": string;
+  "Vocab 2": string;
+  "Vocab 3": string;
+  "Vocab 4": string;
+  "Vocab 5": string;
+  "Grammar Topic": string;
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -21,7 +48,7 @@ export interface Project {
   imagePrompt?: string;
   imageUrl?: string;
   videoUrl?: string;
-  scriptData?: any; // This will hold the structured script data from the webhook
+  scriptData?: ScriptWebhookResponse; // Updated to use the correct interface
 }
 
 export interface PodcastContextType {
@@ -31,6 +58,6 @@ export interface PodcastContextType {
   createProject: (name: string, topic: string) => Promise<Project>;
   setCurrentProject: (project: Project) => void;
   synchronizeProject: (projectId: string) => Promise<void>;
-  approveScript: (projectId: string, script: string, scriptData?: any) => Promise<void>;
+  approveScript: (projectId: string, script: string, scriptData?: ScriptWebhookResponse) => Promise<void>;
   approveImagePrompt: (projectId: string, imagePrompt: string) => Promise<void>;
 }

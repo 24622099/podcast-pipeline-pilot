@@ -1,5 +1,5 @@
 
-import { Project, WorkflowStage } from "../types/podcast";
+import { Project, WorkflowStage, ScriptWebhookResponse } from "../types/podcast";
 
 // Local storage key
 const STORAGE_KEY = "podcastProjects";
@@ -30,7 +30,7 @@ export const createProjectService = async (name: string, topic: string): Promise
 };
 
 // Synchronize project with n8n webhook
-export const synchronizeProjectService = async (project: Project): Promise<void> => {
+export const synchronizeProjectService = async (project: Project): Promise<ScriptWebhookResponse | undefined> => {
   if (project && project.status === "initialize") {
     try {
       // Updated webhook URL
@@ -51,19 +51,29 @@ export const synchronizeProjectService = async (project: Project): Promise<void>
       });
       
       // Make the webhook request with separate JSON fields
-      await fetch(webhookUrl, {
+      const response = await fetch(webhookUrl, {
         method: "POST",
         body: formData,
-        // Remove content-type header to let the browser set it with the boundary parameter for FormData
-        mode: "cors", // Changed from "no-cors" to "cors" to properly handle the response
+        mode: "cors", // Using "cors" to properly handle the response
       });
       
       console.log("Webhook request sent for project synchronization");
+      
+      // Parse the response from the webhook
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("Webhook response received:", responseData);
+        return responseData;
+      } else {
+        console.error("Error response from webhook:", response.status);
+        throw new Error(`Webhook responded with status ${response.status}`);
+      }
     } catch (error) {
       console.error("Error sending webhook for synchronization:", error);
       throw error; // Re-throw to allow the caller to handle the error
     }
   }
+  return undefined;
 };
 
 // Get the next project status
@@ -85,35 +95,4 @@ export const getNextStatus = (currentStatus: WorkflowStage): WorkflowStage => {
     default:
       return currentStatus;
   }
-};
-
-// Generate sample script data for testing
-export const generateSampleScriptData = (projectName: string, projectId: string, topic: string) => {
-  return [
-    {
-      "Project Name": projectName,
-      "Project ID": projectId,
-      "Date Created": new Date().toLocaleDateString(),
-      "Keyword ID": "12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-      "Keyword URL": "https://docs.google.com/spreadsheets/d/12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-      "Folder ID": "12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-      "Folder URL": "https://drive.google.com/drive/folders/12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-      "Video ID": "1eTrT-btNgrVmSTrea46fH7XCERrRHVf79l2NcAjseTw",
-      "Video URL": "https://docs.google.com/spreadsheets/d/1eTrT-btNgrVmSTrea46fH7XCERrRHVf79l2NcAjseTw",
-      "Image ID": "11DhLF3m8EZI-dkhBzE8o5PLTHlUfIZCIepKHVzo2fa4",
-      "Image URL": "https://docs.google.com/spreadsheets/d/11DhLF3m8EZI-dkhBzE8o5PLTHlUfIZCIepKHVzo2fa4",
-      "ScriptDoc ID": "1iaLwveYo_ErkBuDlIdD0g-KBB25OTIBKC_AtQHAsrfY",
-      "ScriptDoc URL": "https://docs.google.com/document/d/1iaLwveYo_ErkBuDlIdD0g-KBB25OTIBKC_AtQHAsrfY",
-      "Opening Hook": "This is the AI generated opening hook for the topic: " + topic,
-      "Part 1": "This is AI generated content for Part 1 about " + topic,
-      "Part 2": "This is AI generated content for Part 2 about " + topic,
-      "Part 3": "This is AI generated content for Part 3 about " + topic,
-      "Vocab 1": "AI_Word1: Definition and example related to " + topic,
-      "Vocab 2": "AI_Word2: Definition and example related to " + topic,
-      "Vocab 3": "AI_Word3: Definition and example related to " + topic,
-      "Vocab 4": "AI_Word4: Definition and example related to " + topic,
-      "Vocab 5": "AI_Word5: Definition and example related to " + topic,
-      "Grammar Topic": "AI generated grammar explanation and examples about " + topic
-    }
-  ];
 };
