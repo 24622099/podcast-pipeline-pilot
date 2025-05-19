@@ -1,41 +1,18 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { Project, PodcastContextType } from "@/types/podcast";
+import { 
+  loadProjects, 
+  saveProjects,
+  createProjectService,
+  synchronizeProjectService,
+  getNextStatus,
+  generateSampleScriptData
+} from "@/services/podcastService";
 
-// Define the workflow stages as a type and also export as constants
-export type WorkflowStage = "initialize" | "draft_script" | "approve_script" | "draft_image_prompt" | "approve_image_prompt" | "media_finalized";
-
-// Export workflowStages as an array of objects with id and label
-export const workflowStages = [
-  { id: "initialize", label: "Initialize" },
-  { id: "draft_script", label: "Draft Script" },
-  { id: "approve_script", label: "Approve Script" },
-  { id: "draft_image_prompt", label: "Draft Image" },
-  { id: "approve_image_prompt", label: "Approve Image" },
-  { id: "media_finalized", label: "Finalized" },
-];
-
-interface Project {
-  id: string;
-  name: string;
-  topic: string;
-  status: WorkflowStage; // Now using our exported type
-  script?: string;
-  imagePrompt?: string;
-  imageUrl?: string;
-  videoUrl?: string;
-  scriptData?: any; // This will hold the structured script data from the webhook
-}
-
-interface PodcastContextType {
-  projects: Project[];
-  currentProject: Project | null;
-  isLoading: boolean;
-  createProject: (name: string, topic: string) => Promise<Project>;
-  setCurrentProject: (project: Project) => void;
-  synchronizeProject: (projectId: string) => Promise<void>;
-  approveScript: (projectId: string, script: string, scriptData?: any) => Promise<void>;
-  approveImagePrompt: (projectId: string, imagePrompt: string) => Promise<void>;
-}
+// Re-export types from the types file to maintain backward compatibility
+export { WorkflowStage, workflowStages } from "@/types/podcast";
+export type { Project, PodcastContextType } from "@/types/podcast";
 
 const PodcastContext = createContext<PodcastContextType | undefined>(undefined);
 
@@ -54,30 +31,20 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   // Load projects from localStorage on mount
   useEffect(() => {
-    const savedProjects = localStorage.getItem("podcastProjects");
-    if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
-    }
+    const savedProjects = loadProjects();
+    setProjects(savedProjects);
   }, []);
 
   // Save projects to localStorage when they change
   useEffect(() => {
-    localStorage.setItem("podcastProjects", JSON.stringify(projects));
+    saveProjects(projects);
   }, [projects]);
 
   const createProject = async (name: string, topic: string): Promise<Project> => {
     setIsLoading(true);
     
     try {
-      // In a real implementation, this would make an API request
-      // For now, we'll just create a project locally
-      const newProject: Project = {
-        id: Math.random().toString(36).substring(2, 11),
-        name,
-        topic,
-        status: "initialize",
-      };
-      
+      const newProject = await createProjectService(name, topic);
       setProjects((prev) => [...prev, newProject]);
       return newProject;
     } finally {
@@ -89,110 +56,40 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsLoading(true);
     
     try {
-      // This would make an API request to synchronize the project with the backend
-      // For now, we'll manually update the status to simulate progress
-      
-      // For testing, we can send a webhook to n8n to simulate backend processing
+      // Find the project to synchronize
       const project = projects.find(p => p.id === projectId);
-      if (project && project.status === "initialize") {
-        try {
-          // Send data to n8n webhook for synchronization
-          const webhookUrl = "https://n8n.chichung.studio/webhook/SyncProject";
-          
-          const webhookData = {
-            projectId: project.id,
-            projectName: project.name,
-            projectTopic: project.topic,
-            currentStatus: project.status,
-            timestamp: new Date().toISOString()
-          };
-          
-          console.log("Synchronizing project with n8n webhook:", webhookData);
-          
-          // Make the webhook request
-          await fetch(webhookUrl, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(webhookData),
-            mode: "no-cors", // Add this to handle CORS
-          });
-          
-          // We continue with local updates regardless of webhook result
-          console.log("Webhook request sent for project synchronization");
-        } catch (error) {
-          console.error("Error sending webhook for synchronization:", error);
-        }
-      }
       
-      setProjects((prev) =>
-        prev.map((p) => {
-          if (p.id === projectId) {
-            // Simulate receiving data from webhook
-            const scriptData = p.status === "initialize" ? [
-              {
-                "Project Name": p.name,
-                "Project ID": p.id,
-                "Date Created": new Date().toLocaleDateString(),
-                "Keyword ID": "12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-                "Keyword URL": "https://docs.google.com/spreadsheets/d/12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-                "Folder ID": "12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-                "Folder URL": "https://drive.google.com/drive/folders/12PURjQqg3SHbo_yWE2zRYvS7OLCq6VfpCiWCClblJtw",
-                "Video ID": "1eTrT-btNgrVmSTrea46fH7XCERrRHVf79l2NcAjseTw",
-                "Video URL": "https://docs.google.com/spreadsheets/d/1eTrT-btNgrVmSTrea46fH7XCERrRHVf79l2NcAjseTw",
-                "Image ID": "11DhLF3m8EZI-dkhBzE8o5PLTHlUfIZCIepKHVzo2fa4",
-                "Image URL": "https://docs.google.com/spreadsheets/d/11DhLF3m8EZI-dkhBzE8o5PLTHlUfIZCIepKHVzo2fa4",
-                "ScriptDoc ID": "1iaLwveYo_ErkBuDlIdD0g-KBB25OTIBKC_AtQHAsrfY",
-                "ScriptDoc URL": "https://docs.google.com/document/d/1iaLwveYo_ErkBuDlIdD0g-KBB25OTIBKC_AtQHAsrfY",
-                "Opening Hook": "This is the AI generated opening hook for the topic: " + p.topic,
-                "Part 1": "This is AI generated content for Part 1 about " + p.topic,
-                "Part 2": "This is AI generated content for Part 2 about " + p.topic,
-                "Part 3": "This is AI generated content for Part 3 about " + p.topic,
-                "Vocab 1": "AI_Word1: Definition and example related to " + p.topic,
-                "Vocab 2": "AI_Word2: Definition and example related to " + p.topic,
-                "Vocab 3": "AI_Word3: Definition and example related to " + p.topic,
-                "Vocab 4": "AI_Word4: Definition and example related to " + p.topic,
-                "Vocab 5": "AI_Word5: Definition and example related to " + p.topic,
-                "Grammar Topic": "AI generated grammar explanation and examples about " + p.topic
-              }
-            ] : p.scriptData;
-            
-            // Update the project status based on current state
-            let nextStatus = p.status;
-            switch (p.status) {
-              case "initialize":
-                nextStatus = "draft_script";
-                break;
-              case "draft_script":
-                // Stay in the same stage until approved
-                break;
-              case "approve_script":
-                nextStatus = "draft_image_prompt";
-                break;
-              case "draft_image_prompt":
-                // Stay in the same stage until approved
-                break;
-              case "approve_image_prompt":
-                nextStatus = "media_finalized";
-                break;
-              // If already finalized, no change
+      if (project) {
+        // Send data to webhook if needed
+        await synchronizeProjectService(project);
+        
+        // Update project status
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p.id === projectId) {
+              // Generate sample script data for testing
+              const scriptData = p.status === "initialize" 
+                ? generateSampleScriptData(p.name, p.id, p.topic)
+                : p.scriptData;
+              
+              // Get the next status
+              const nextStatus = getNextStatus(p.status);
+              
+              return {
+                ...p,
+                status: nextStatus,
+                scriptData: scriptData
+              };
             }
-            
-            return {
-              ...p,
-              status: nextStatus,
-              scriptData: scriptData
-            };
-          }
-          return p;
-        })
-      );
-      
-      // If the current project is the one being synchronized, update it
-      if (currentProject && currentProject.id === projectId) {
-        const updatedProject = projects.find(p => p.id === projectId);
-        if (updatedProject) setCurrentProject(updatedProject);
+            return p;
+          })
+        );
+        
+        // Update current project if it's the one being synchronized
+        if (currentProject && currentProject.id === projectId) {
+          const updatedProject = projects.find(p => p.id === projectId);
+          if (updatedProject) setCurrentProject(updatedProject);
+        }
       }
     } finally {
       setIsLoading(false);

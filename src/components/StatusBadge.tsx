@@ -1,5 +1,5 @@
 
-import { WorkflowStage } from "@/contexts/PodcastContext";
+import { WorkflowStage } from "@/types/podcast";
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {

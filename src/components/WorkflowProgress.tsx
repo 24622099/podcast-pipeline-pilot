@@ -1,6 +1,6 @@
 
 import { Check } from "lucide-react";
-import { WorkflowStage, workflowStages } from "@/contexts/PodcastContext";
+import { WorkflowStage, workflowStages } from "@/types/podcast";
 import { cn } from "@/lib/utils";
 
 interface WorkflowProgressProps {
