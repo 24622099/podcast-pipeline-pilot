@@ -34,7 +34,7 @@ export const synchronizeProjectService = async (project: Project): Promise<Scrip
   if (project && project.status === "initialize") {
     try {
       // Updated webhook URL
-      const webhookUrl = "https://n8n.chichung.studio/webhook-test/NewProject";
+      const webhookUrl = "https://n8n.chichung.studio/webhook/NewProject";
       
       // Format data as separate JSON fields instead of a single body
       const formData = new FormData();
