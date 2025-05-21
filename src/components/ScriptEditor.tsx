@@ -99,6 +99,8 @@ ${scriptFields.grammarTopic}
         "Grammar Topic": scriptFields.grammarTopic
       };
       
+      console.log("Sending updated script data to webhook:", updatedWebhookData);
+      
       // Call the parent component's save function
       await onSave(compiledScript, updatedWebhookData);
     } finally {
@@ -320,7 +322,7 @@ ${scriptFields.grammarTopic}
           disabled={isSaving || isLoading}
         >
           <Check className="mr-2 h-4 w-4" />
-          Approve Script & Continue
+          {isSaving ? "Processing..." : "Approve Script & Continue"}
         </Button>
       </div>
     </div>

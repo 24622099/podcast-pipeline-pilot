@@ -12,6 +12,7 @@ import {
   saveProjects,
   createProjectService,
   synchronizeProjectService,
+  processApprovedScriptService,
   generateMediaService,
   getNextStatus,
 } from "@/services/podcastService";
@@ -124,29 +125,69 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsLoading(true);
     
     try {
-      setProjects((prev) =>
-        prev.map((p) => {
-          if (p.id === projectId) {
-            return {
-              ...p,
-              status: "approve_script",
-              script,
-              scriptData: scriptData || p.scriptData
-            };
-          }
-          return p;
-        })
-      );
+      // Update the project status to approve_script
+      const updatedProjects = projects.map((p) => {
+        if (p.id === projectId) {
+          return {
+            ...p,
+            status: "approve_script" as WorkflowStage,
+            script,
+            scriptData: scriptData || p.scriptData
+          };
+        }
+        return p;
+      });
+      
+      setProjects(updatedProjects);
       
       // Update current project if it's the one being approved
-      if (currentProject && currentProject.id === projectId) {
+      const project = updatedProjects.find(p => p.id === projectId);
+      
+      if (currentProject && currentProject.id === projectId && project) {
         setCurrentProject({
-          ...currentProject,
-          status: "approve_script",
-          script,
-          scriptData: scriptData || currentProject.scriptData
+          ...project
         });
+        
+        // Send the approved script to the webhook for processing
+        console.log("Sending approved script to webhook for processing");
+        const webhookResponse = await processApprovedScriptService(project, script, scriptData || project.scriptData!);
+        
+        if (webhookResponse) {
+          console.log("Received response from script processing webhook:", webhookResponse);
+          
+          // Update the project with the new data and move to draft_image_prompt
+          const projectsWithProcessedScript = projects.map((p) => {
+            if (p.id === projectId) {
+              return {
+                ...p,
+                status: "draft_image_prompt" as WorkflowStage,
+                scriptData: {
+                  ...p.scriptData,
+                  ...webhookResponse
+                }
+              };
+            }
+            return p;
+          });
+          
+          setProjects(projectsWithProcessedScript);
+          
+          // Update current project
+          if (currentProject && currentProject.id === projectId) {
+            setCurrentProject({
+              ...currentProject,
+              status: "draft_image_prompt" as WorkflowStage,
+              scriptData: {
+                ...currentProject.scriptData,
+                ...webhookResponse
+              }
+            });
+          }
+        }
       }
+    } catch (error) {
+      console.error("Failed to process approved script:", error);
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -161,7 +202,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (p.id === projectId) {
             return {
               ...p,
-              status: "approve_image_prompt",
+              status: "approve_image_prompt" as WorkflowStage,
               imagePrompt,
             };
           }
@@ -173,7 +214,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (currentProject && currentProject.id === projectId) {
         setCurrentProject({
           ...currentProject,
-          status: "approve_image_prompt",
+          status: "approve_image_prompt" as WorkflowStage,
           imagePrompt,
         });
       }
@@ -199,7 +240,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
             if (p.id === projectId) {
               return {
                 ...p,
-                status: "media_finalized",
+                status: "media_finalized" as WorkflowStage,
                 videoUrl: mediaResult.videoUrl || p.videoUrl,
                 imageUrl: mediaResult.imageUrl || p.imageUrl
               };
@@ -212,7 +253,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (currentProject && currentProject.id === projectId) {
           setCurrentProject({
             ...currentProject,
-            status: "media_finalized",
+            status: "media_finalized" as WorkflowStage,
             videoUrl: mediaResult.videoUrl || currentProject.videoUrl,
             imageUrl: mediaResult.imageUrl || currentProject.imageUrl
           });

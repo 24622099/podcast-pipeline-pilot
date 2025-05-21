@@ -83,6 +83,60 @@ export const synchronizeProjectService = async (project: Project): Promise<Scrip
   return undefined;
 };
 
+// Process approved script with n8n webhook
+export const processApprovedScriptService = async (project: Project, script: string, scriptData: ScriptWebhookResponse): Promise<ScriptWebhookResponse | undefined> => {
+  if (project && project.status === "approve_script") {
+    try {
+      // Webhook URL for script processing
+      const webhookUrl = "https://n8n.chichung.studio/webhook-test/RunPromt";
+      
+      // Prepare data to send to webhook
+      const dataToSend = {
+        projectId: project.id,
+        projectName: project.name,
+        script,
+        scriptData,
+        timestamp: new Date().toISOString()
+      };
+      
+      console.log("Sending approved script data to webhook:", dataToSend);
+      
+      // Make the webhook request
+      const response = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(dataToSend),
+        mode: "cors",
+      });
+      
+      console.log("Script processing webhook response status:", response.status);
+      
+      // Parse the response from the webhook
+      if (response.ok) {
+        const responseData = await response.json();
+        console.log("Script processing webhook response received:", responseData);
+        
+        // Check if the response is an array
+        if (Array.isArray(responseData) && responseData.length > 0) {
+          return responseData[0] as ScriptWebhookResponse; // Return the first item
+        } else {
+          console.log("Returning direct response data from script processing");
+          return responseData as ScriptWebhookResponse;
+        }
+      } else {
+        console.error("Error response from script processing webhook:", response.status);
+        throw new Error(`Script processing webhook responded with status ${response.status}`);
+      }
+    } catch (error) {
+      console.error("Error sending webhook for script processing:", error);
+      throw error;
+    }
+  }
+  return undefined;
+};
+
 // Generate media (video and image)
 export const generateMediaService = async (project: Project): Promise<{videoUrl?: string, imageUrl?: string}> => {
   if (!project) return {};
