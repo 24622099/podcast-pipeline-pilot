@@ -11,7 +11,7 @@ import WorkflowProgress from "@/components/WorkflowProgress";
 import { Check, Cloud, RefreshCw, Pen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import ScriptEditor from "@/components/ScriptEditor";
-import { ScriptWebhookResponse } from "@/types/podcast";
+import { ScriptWebhookResponse } from "@/types/podcast";  // Corrected import
 import { useToast } from "@/hooks/use-toast";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
 
@@ -46,6 +46,13 @@ const ProjectDetail = () => {
   // Webhook data state
   const [webhookData, setWebhookData] = useState<ScriptWebhookResponse | null>(null);
 
+  // Set debug flag to help troubleshoot UI transitions
+  const [debugInfo, setDebugInfo] = useState({
+    lastAction: "",
+    currentStatus: "",
+    hasWebhookData: false
+  });
+
   useEffect(() => {
     if (id) {
       const project = projects.find((p) => p.id === id);
@@ -59,7 +66,17 @@ const ProjectDetail = () => {
         // Initialize webhook data if it exists
         if (project.scriptData) {
           setWebhookData(project.scriptData);
+          setDebugInfo(prev => ({
+            ...prev,
+            hasWebhookData: true
+          }));
         }
+        
+        // Update debug info
+        setDebugInfo(prev => ({
+          ...prev,
+          currentStatus: project.status
+        }));
       } else {
         navigate("/");
       }
@@ -68,8 +85,17 @@ const ProjectDetail = () => {
 
   // Update webhook data when current project changes
   useEffect(() => {
-    if (currentProject && currentProject.scriptData) {
-      setWebhookData(currentProject.scriptData);
+    if (currentProject) {
+      // Update debug info
+      setDebugInfo(prev => ({
+        ...prev,
+        currentStatus: currentProject.status,
+        hasWebhookData: !!currentProject.scriptData
+      }));
+      
+      if (currentProject.scriptData) {
+        setWebhookData(currentProject.scriptData);
+      }
     }
   }, [currentProject]);
 
@@ -77,9 +103,33 @@ const ProjectDetail = () => {
   const handleInitializeProject = async () => {
     if (currentProject && currentProject.status === "initialize") {
       try {
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Starting initialization"
+        }));
+        
         setShowInitProcessing(true);
         
+        // Log before webhook call
+        console.log("Sending data to webhook:", {
+          projectId: currentProject.id,
+          projectName,
+          projectTopic,
+        });
+        
         await synchronizeProject(currentProject.id);
+        
+        // Log after webhook call
+        console.log("Webhook response received, current project status:", 
+          projects.find(p => p.id === currentProject.id)?.status
+        );
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Initialization complete",
+          currentStatus: "draft_script",
+          hasWebhookData: true
+        }));
         
         toast({
           title: "Success",
@@ -87,6 +137,12 @@ const ProjectDetail = () => {
         });
       } catch (error) {
         console.error("Error initializing project:", error);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Initialization failed"
+        }));
+        
         toast({
           title: "Error",
           description: "There was a problem generating the draft script. Please check the webhook URL.",
@@ -102,13 +158,31 @@ const ProjectDetail = () => {
   const handleSubmitScript = async (compiledScript: string, updatedData: ScriptWebhookResponse) => {
     if (currentProject) {
       try {
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Approving script"
+        }));
+        
         await approveScript(currentProject.id, compiledScript, updatedData);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Script approved",
+          currentStatus: "approve_script"
+        }));
+        
         toast({
           title: "Success",
           description: "Script has been approved successfully.",
         });
       } catch (error) {
         console.error("Error approving script:", error);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Script approval failed"
+        }));
+        
         toast({
           title: "Error",
           description: "There was a problem approving the script.",
@@ -122,13 +196,31 @@ const ProjectDetail = () => {
   const handleSubmitImagePrompt = async () => {
     if (currentProject && imagePrompt.trim()) {
       try {
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Approving image prompt"
+        }));
+        
         await approveImagePrompt(currentProject.id, imagePrompt);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Image prompt approved",
+          currentStatus: "approve_image_prompt"
+        }));
+        
         toast({
           title: "Success",
           description: "Image prompt has been approved successfully.",
         });
       } catch (error) {
         console.error("Error approving image prompt:", error);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Image prompt approval failed"
+        }));
+        
         toast({
           title: "Error",
           description: "There was a problem approving the image prompt.",
@@ -142,6 +234,11 @@ const ProjectDetail = () => {
   const handleGenerateMedia = async () => {
     if (currentProject) {
       try {
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Starting media generation"
+        }));
+        
         setShowMediaProcessing(true);
         
         // Update steps status - start video processing
@@ -155,6 +252,12 @@ const ProjectDetail = () => {
         
         // Start media generation
         await generateMedia(currentProject.id);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Media generation complete",
+          currentStatus: "media_finalized"
+        }));
         
         // Update steps status - mark video as complete, image as complete
         setMediaProcessingSteps([
@@ -174,6 +277,12 @@ const ProjectDetail = () => {
         
       } catch (error) {
         console.error("Error generating media:", error);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Media generation failed"
+        }));
+        
         toast({
           title: "Error",
           description: "There was a problem generating the media.",
@@ -187,6 +296,13 @@ const ProjectDetail = () => {
   // Determine which stage content to render based on the current project status
   const renderStageContent = () => {
     const isLoading = contextLoading || isProcessing;
+    
+    // Log current rendering state
+    console.log("Rendering stage content:", {
+      status: currentProject?.status,
+      hasWebhookData: !!webhookData,
+      isLoading
+    });
     
     switch (currentProject?.status) {
       case "initialize":
@@ -430,6 +546,25 @@ const ProjectDetail = () => {
         );
     }
   };
+  
+  // Add a debug panel in development
+  const renderDebugPanel = () => {
+    const isDevMode = true; // Set to false for production
+    
+    if (!isDevMode) return null;
+    
+    return (
+      <div className="mt-6 p-4 bg-gray-100 rounded-md border border-gray-300">
+        <h3 className="font-medium mb-2">Debug Info:</h3>
+        <ul className="text-sm space-y-1">
+          <li><strong>Current Status:</strong> {debugInfo.currentStatus}</li>
+          <li><strong>Last Action:</strong> {debugInfo.lastAction}</li>
+          <li><strong>Has Webhook Data:</strong> {debugInfo.hasWebhookData ? "Yes" : "No"}</li>
+          <li><strong>Current Project ID:</strong> {currentProject?.id || "None"}</li>
+        </ul>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -447,6 +582,9 @@ const ProjectDetail = () => {
           <div className="mt-6">
             <WorkflowProgress currentStage={currentProject?.status || "initialize"} />
           </div>
+          
+          {/* Debug panel */}
+          {renderDebugPanel()}
         </div>
 
         {/* Dynamic content based on project stage */}
@@ -495,3 +633,4 @@ const ProjectDetail = () => {
 };
 
 export default ProjectDetail;
+

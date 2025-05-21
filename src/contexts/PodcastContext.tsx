@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
   Project, 
@@ -63,37 +62,54 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsLoading(true);
     
     try {
+      console.log("Starting project synchronization for ID:", projectId);
+      
       // Find the project to synchronize
       const project = projects.find(p => p.id === projectId);
       
-      if (project) {
-        // Send data to webhook and get response
-        const webhookResponse = await synchronizeProjectService(project);
+      if (!project) {
+        console.error("Project not found:", projectId);
+        throw new Error("Project not found");
+      }
+      
+      console.log("Found project:", project.name, "with status:", project.status);
+      
+      // Send data to webhook and get response
+      const webhookResponse = await synchronizeProjectService(project);
+      
+      console.log("Webhook response received:", webhookResponse ? "Data received" : "No data");
+      
+      if (webhookResponse) {
+        console.log("Updating project with webhook data");
         
-        if (webhookResponse) {
-          // Update project with received webhook data
-          setProjects((prev) =>
-            prev.map((p) => {
-              if (p.id === projectId) {
-                return {
-                  ...p,
-                  status: "draft_script",
-                  scriptData: webhookResponse
-                };
-              }
-              return p;
-            })
-          );
-          
-          // Update current project if it's the one being synchronized
-          if (currentProject && currentProject.id === projectId) {
-            setCurrentProject({
-              ...currentProject,
+        // Update project with received webhook data
+        const updatedProjects = projects.map((p) => {
+          if (p.id === projectId) {
+            const updatedProject = {
+              ...p,
               status: "draft_script",
               scriptData: webhookResponse
-            });
+            };
+            console.log("Project updated:", updatedProject.name, "with new status:", updatedProject.status);
+            return updatedProject;
           }
+          return p;
+        });
+        
+        setProjects(updatedProjects);
+        
+        // Update current project if it's the one being synchronized
+        if (currentProject && currentProject.id === projectId) {
+          const updatedCurrentProject = {
+            ...currentProject,
+            status: "draft_script",
+            scriptData: webhookResponse
+          };
+          console.log("Current project updated with status:", updatedCurrentProject.status);
+          setCurrentProject(updatedCurrentProject);
         }
+      } else {
+        console.warn("No webhook response data received");
       }
     } catch (error) {
       console.error("Failed to synchronize project:", error);

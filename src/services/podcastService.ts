@@ -1,4 +1,3 @@
-
 import { Project, WorkflowStage, ScriptWebhookResponse } from "../types/podcast";
 
 // Local storage key
@@ -43,7 +42,8 @@ export const synchronizeProjectService = async (project: Project): Promise<Scrip
       formData.append('currentStatus', project.status);
       formData.append('timestamp', new Date().toISOString());
       
-      console.log("Synchronizing project with n8n webhook:", {
+      console.log("Sending data to webhook:", {
+        projectId: project.id,
         projectName: project.name,
         projectTopic: project.topic,
         timestamp: new Date().toISOString()
@@ -56,13 +56,20 @@ export const synchronizeProjectService = async (project: Project): Promise<Scrip
         mode: "cors", // Using "cors" to properly handle the response
       });
       
-      console.log("Webhook request sent for project synchronization");
+      console.log("Webhook response status:", response.status);
       
       // Parse the response from the webhook
       if (response.ok) {
         const responseData = await response.json();
         console.log("Webhook response received:", responseData);
-        return responseData[0]; // Extract the first item from the array response
+        
+        // Check if the response is an array
+        if (Array.isArray(responseData) && responseData.length > 0) {
+          return responseData[0]; // Extract the first item from the array response
+        } else {
+          console.log("Returning direct response data");
+          return responseData; // Return the direct response if not an array
+        }
       } else {
         console.error("Error response from webhook:", response.status);
         throw new Error(`Webhook responded with status ${response.status}`);
