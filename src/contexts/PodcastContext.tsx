@@ -12,6 +12,7 @@ import {
   saveProjects,
   createProjectService,
   synchronizeProjectService,
+  generateMediaService,
   getNextStatus,
 } from "@/services/podcastService";
 
@@ -69,27 +70,29 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
         // Send data to webhook and get response
         const webhookResponse = await synchronizeProjectService(project);
         
-        // Update project status
-        setProjects((prev) =>
-          prev.map((p) => {
-            if (p.id === projectId) {
-              // Get the next status
-              const nextStatus = getNextStatus(p.status);
-              
-              return {
-                ...p,
-                status: nextStatus,
-                scriptData: webhookResponse // Store the actual webhook response
-              };
-            }
-            return p;
-          })
-        );
-        
-        // Update current project if it's the one being synchronized
-        if (currentProject && currentProject.id === projectId) {
-          const updatedProject = projects.find(p => p.id === projectId);
-          if (updatedProject) setCurrentProject(updatedProject);
+        if (webhookResponse) {
+          // Update project with received webhook data
+          setProjects((prev) =>
+            prev.map((p) => {
+              if (p.id === projectId) {
+                return {
+                  ...p,
+                  status: "draft_script",
+                  scriptData: webhookResponse
+                };
+              }
+              return p;
+            })
+          );
+          
+          // Update current project if it's the one being synchronized
+          if (currentProject && currentProject.id === projectId) {
+            setCurrentProject({
+              ...currentProject,
+              status: "draft_script",
+              scriptData: webhookResponse
+            });
+          }
         }
       }
     } catch (error) {
@@ -104,7 +107,6 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsLoading(true);
     
     try {
-      // This would make an API request to approve the script
       setProjects((prev) =>
         prev.map((p) => {
           if (p.id === projectId) {
@@ -137,7 +139,6 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setIsLoading(true);
     
     try {
-      // This would make an API request to approve the image prompt
       setProjects((prev) =>
         prev.map((p) => {
           if (p.id === projectId) {
@@ -163,6 +164,50 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setIsLoading(false);
     }
   };
+  
+  const generateMedia = async (projectId: string): Promise<void> => {
+    setIsLoading(true);
+    
+    try {
+      // Find the project
+      const project = projects.find(p => p.id === projectId);
+      
+      if (project) {
+        // Generate media (video and image)
+        const mediaResult = await generateMediaService(project);
+        
+        // Update project with media URLs
+        setProjects((prev) =>
+          prev.map((p) => {
+            if (p.id === projectId) {
+              return {
+                ...p,
+                status: "media_finalized",
+                videoUrl: mediaResult.videoUrl || p.videoUrl,
+                imageUrl: mediaResult.imageUrl || p.imageUrl
+              };
+            }
+            return p;
+          })
+        );
+        
+        // Update current project if it's the one being processed
+        if (currentProject && currentProject.id === projectId) {
+          setCurrentProject({
+            ...currentProject,
+            status: "media_finalized",
+            videoUrl: mediaResult.videoUrl || currentProject.videoUrl,
+            imageUrl: mediaResult.imageUrl || currentProject.imageUrl
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Failed to generate media:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <PodcastContext.Provider
@@ -175,6 +220,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
         synchronizeProject,
         approveScript,
         approveImagePrompt,
+        generateMedia,
       }}
     >
       {children}

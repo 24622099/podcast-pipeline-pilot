@@ -4,17 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, Save, RefreshCw } from "lucide-react";
+import { Check, Save } from "lucide-react";
 import { ScriptWebhookResponse } from "@/types/podcast";
 
 interface ScriptEditorProps {
   webhookData: ScriptWebhookResponse;
   onSave: (compiledScript: string, updatedData: ScriptWebhookResponse) => Promise<void>;
-  onSaveDraft: () => Promise<void>;
   isLoading: boolean;
 }
 
-const ScriptEditor = ({ webhookData, onSave, onSaveDraft, isLoading }: ScriptEditorProps) => {
+const ScriptEditor = ({ webhookData, onSave, isLoading }: ScriptEditorProps) => {
   const [isSaving, setIsSaving] = useState(false);
   const [scriptFields, setScriptFields] = useState({
     openingHook: "",
@@ -179,32 +178,6 @@ ${scriptFields.grammarTopic}
                     Open Script Document
                   </a>
                 </div>
-                
-                <div>
-                  <Label className="text-sm text-gray-500">Video ID</Label>
-                  <p className="text-sm font-medium">{webhookData["Video ID"]}</p>
-                  <a 
-                    href={webhookData["Video URL"]} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-500 hover:underline"
-                  >
-                    Open Video Document
-                  </a>
-                </div>
-                
-                <div>
-                  <Label className="text-sm text-gray-500">Image ID</Label>
-                  <p className="text-sm font-medium">{webhookData["Image ID"]}</p>
-                  <a 
-                    href={webhookData["Image URL"]} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-500 hover:underline"
-                  >
-                    Open Image Document
-                  </a>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -340,25 +313,14 @@ ${scriptFields.grammarTopic}
         </div>
       </div>
       
-      <div className="flex justify-between mt-6">
-        <Button
-          variant="outline"
-          onClick={onSaveDraft}
-          disabled={isSaving || isLoading}
-        >
-          <Save className="mr-2 h-4 w-4" /> Save Draft
-        </Button>
-        
+      <div className="flex justify-end mt-6">
         <Button 
           onClick={handleSaveAndApprove} 
+          className="bg-green-600 hover:bg-green-700"
           disabled={isSaving || isLoading}
         >
-          {isSaving ? (
-            <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-          ) : (
-            <Check className="mr-2 h-4 w-4" />
-          )}
-          Save & Approve Script
+          <Check className="mr-2 h-4 w-4" />
+          Approve Script & Continue
         </Button>
       </div>
     </div>

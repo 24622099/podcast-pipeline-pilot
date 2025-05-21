@@ -8,11 +8,12 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePodcast } from "@/contexts/PodcastContext";
 import WorkflowProgress from "@/components/WorkflowProgress";
-import { Check, Cloud, RefreshCw } from "lucide-react";
+import { Check, Cloud, RefreshCw, Pen } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import ScriptEditor from "@/components/ScriptEditor";
 import { ScriptWebhookResponse } from "@/types/podcast";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import ProcessingOverlay from "@/components/ProcessingOverlay";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -21,17 +22,26 @@ const ProjectDetail = () => {
     projects,
     currentProject,
     setCurrentProject,
-    isLoading,
+    isLoading: contextLoading,
     synchronizeProject,
     approveScript,
     approveImagePrompt,
+    generateMedia,
   } = usePodcast();
   const { toast } = useToast();
 
+  // Local UI state
   const [projectName, setProjectName] = useState("");
   const [projectTopic, setProjectTopic] = useState("");
   const [script, setScript] = useState("");
   const [imagePrompt, setImagePrompt] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [showInitProcessing, setShowInitProcessing] = useState(false);
+  const [showMediaProcessing, setShowMediaProcessing] = useState(false);
+  const [mediaProcessingSteps, setMediaProcessingSteps] = useState([
+    { id: "video", label: "Creating Video Content", isCompleted: false, isProcessing: false },
+    { id: "image", label: "Generating Image", isCompleted: false, isProcessing: false }
+  ]);
   
   // Webhook data state
   const [webhookData, setWebhookData] = useState<ScriptWebhookResponse | null>(null);
@@ -63,33 +73,14 @@ const ProjectDetail = () => {
     }
   }, [currentProject]);
 
-  const handleSynchronize = async () => {
-    if (currentProject) {
-      try {
-        await synchronizeProject(currentProject.id);
-        toast({
-          title: "Project Synchronized",
-          description: "Your project has been synchronized successfully.",
-        });
-      } catch (error) {
-        console.error("Error synchronizing project:", error);
-        toast({
-          title: "Synchronization Failed",
-          description: "There was an error synchronizing your project.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
-
+  // Handle project initialization and script generation
   const handleInitializeProject = async () => {
     if (currentProject && currentProject.status === "initialize") {
       try {
-        toast({
-          title: "Processing",
-          description: "Generating draft script. This may take a moment...",
-        });
+        setShowInitProcessing(true);
+        
         await synchronizeProject(currentProject.id);
+        
         toast({
           title: "Success",
           description: "Draft script has been generated successfully.",
@@ -101,24 +92,102 @@ const ProjectDetail = () => {
           description: "There was a problem generating the draft script. Please check the webhook URL.",
           variant: "destructive",
         });
+      } finally {
+        setShowInitProcessing(false);
       }
     }
   };
 
+  // Handle script submission
   const handleSubmitScript = async (compiledScript: string, updatedData: ScriptWebhookResponse) => {
     if (currentProject) {
-      await approveScript(currentProject.id, compiledScript, updatedData);
+      try {
+        await approveScript(currentProject.id, compiledScript, updatedData);
+        toast({
+          title: "Success",
+          description: "Script has been approved successfully.",
+        });
+      } catch (error) {
+        console.error("Error approving script:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem approving the script.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
+  // Handle image prompt submission
   const handleSubmitImagePrompt = async () => {
     if (currentProject && imagePrompt.trim()) {
-      await approveImagePrompt(currentProject.id, imagePrompt);
+      try {
+        await approveImagePrompt(currentProject.id, imagePrompt);
+        toast({
+          title: "Success",
+          description: "Image prompt has been approved successfully.",
+        });
+      } catch (error) {
+        console.error("Error approving image prompt:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem approving the image prompt.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  // Handle media generation (video and image)
+  const handleGenerateMedia = async () => {
+    if (currentProject) {
+      try {
+        setShowMediaProcessing(true);
+        
+        // Update steps status - start video processing
+        setMediaProcessingSteps(prev => 
+          prev.map(step => 
+            step.id === "video" 
+              ? { ...step, isProcessing: true, isCompleted: false }
+              : step
+          )
+        );
+        
+        // Start media generation
+        await generateMedia(currentProject.id);
+        
+        // Update steps status - mark video as complete, image as complete
+        setMediaProcessingSteps([
+          { id: "video", label: "Video Content Created", isCompleted: true, isProcessing: false },
+          { id: "image", label: "Image Generated Successfully", isCompleted: true, isProcessing: false }
+        ]);
+        
+        toast({
+          title: "Success",
+          description: "Media has been generated successfully.",
+        });
+        
+        // Leave the success overlay for a moment before closing
+        setTimeout(() => {
+          setShowMediaProcessing(false);
+        }, 2000);
+        
+      } catch (error) {
+        console.error("Error generating media:", error);
+        toast({
+          title: "Error",
+          description: "There was a problem generating the media.",
+          variant: "destructive",
+        });
+        setShowMediaProcessing(false);
+      }
     }
   };
 
   // Determine which stage content to render based on the current project status
   const renderStageContent = () => {
+    const isLoading = contextLoading || isProcessing;
+    
     switch (currentProject?.status) {
       case "initialize":
         return (
@@ -176,31 +245,12 @@ const ProjectDetail = () => {
               <ScriptEditor 
                 webhookData={webhookData} 
                 onSave={handleSubmitScript}
-                onSaveDraft={handleSynchronize}
                 isLoading={isLoading}
               />
             ) : (
-              // Fallback to the original script editor if webhook data is not available
-              <>
-                <p className="text-gray-600 text-sm">
-                  Edit the draft script below as needed, then approve it to move to the next stage.
-                </p>
-                <Textarea
-                  value={script}
-                  onChange={(e) => setScript(e.target.value)}
-                  placeholder="The script is being generated..."
-                  className="min-h-[300px] font-mono text-sm"
-                  disabled={isLoading}
-                />
-                <Button 
-                  onClick={() => approveScript(currentProject.id, script)} 
-                  className="mt-4" 
-                  size="lg" 
-                  disabled={!script.trim() || isLoading}
-                >
-                  <Check className="mr-2 h-5 w-5" /> Save & Approve Script
-                </Button>
-              </>
+              <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
+                <p className="text-yellow-700">No script data available. Please go back to the initialization step.</p>
+              </div>
             )}
           </div>
         );
@@ -225,18 +275,34 @@ const ProjectDetail = () => {
               id="image-prompt"
               value={imagePrompt}
               onChange={(e) => setImagePrompt(e.target.value)}
-              placeholder="The image prompt is being generated..."
+              placeholder="Enter an image generation prompt based on your script..."
               className="min-h-[100px]"
               disabled={isLoading}
             />
-            <Button 
-              onClick={handleSubmitImagePrompt} 
-              className="mt-4" 
-              size="lg" 
-              disabled={!imagePrompt.trim() || isLoading}
-            >
-              <Check className="mr-2 h-5 w-5" /> Approve Prompt & Request Image Generation
-            </Button>
+            
+            <div className="flex justify-between mt-4">
+              <Button 
+                onClick={handleSubmitImagePrompt} 
+                disabled={!imagePrompt.trim() || isLoading}
+              >
+                <Check className="mr-2 h-5 w-5" /> Approve Prompt
+              </Button>
+              
+              <Button 
+                onClick={handleGenerateMedia}
+                variant="default" 
+                className="bg-green-600 hover:bg-green-700"
+                disabled={isLoading || currentProject.status !== "approve_image_prompt"}
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Processing...
+                  </>
+                ) : (
+                  "Generate Media"
+                )}
+              </Button>
+            </div>
           </div>
         );
 
@@ -245,7 +311,7 @@ const ProjectDetail = () => {
           <div className="space-y-6">
             <h2 className="text-xl font-semibold">Step 6: Review Final Media Assets</h2>
             <p className="text-green-600 font-medium">
-              Project completed! You can proceed with the next steps outside this application.
+              Project completed! You can access your media assets below.
             </p>
 
             <div className="grid md:grid-cols-2 gap-6">
@@ -297,6 +363,62 @@ const ProjectDetail = () => {
                 </CardContent>
               </Card>
             </div>
+            
+            {webhookData && (
+              <div className="mt-4">
+                <h3 className="font-medium mb-3">Additional Project Resources:</h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <h4 className="text-sm font-medium mb-2">Document Links</h4>
+                      <ul className="space-y-2">
+                        <li>
+                          <a 
+                            href={webhookData["ScriptDoc URL"]} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            Script Document
+                          </a>
+                        </li>
+                        <li>
+                          <a 
+                            href={webhookData["Folder URL"]} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            Project Folder
+                          </a>
+                        </li>
+                        <li>
+                          <a 
+                            href={webhookData["Keyword URL"]} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline text-sm"
+                          >
+                            Keyword Document
+                          </a>
+                        </li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                  
+                  <Card>
+                    <CardContent className="pt-6">
+                      <h4 className="text-sm font-medium mb-2">Project Information</h4>
+                      <ul className="space-y-1">
+                        <li className="text-sm">Project ID: {webhookData["Project ID"]}</li>
+                        <li className="text-sm">Date Created: {webhookData["Date Created"]}</li>
+                        <li className="text-sm">Project Name: {webhookData["Project Name"]}</li>
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
           </div>
         );
 
@@ -319,19 +441,6 @@ const ProjectDetail = () => {
               <h1 className="text-xl font-bold text-gray-900">{currentProject?.name}</h1>
               <p className="text-gray-600 mt-1">{currentProject?.topic}</p>
             </div>
-            <Button
-              variant="outline"
-              onClick={handleSynchronize}
-              disabled={isLoading}
-              className="flex items-center"
-            >
-              {isLoading ? (
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Cloud className="mr-2 h-4 w-4" />
-              )}
-              Synchronize Project
-            </Button>
           </div>
 
           {/* Workflow progress bar */}
@@ -342,7 +451,7 @@ const ProjectDetail = () => {
 
         {/* Dynamic content based on project stage */}
         <div className="p-6">
-          {isLoading ? (
+          {contextLoading && !showInitProcessing && !showMediaProcessing ? (
             <div className="animate-pulse space-y-4">
               <Skeleton className="h-8 w-1/3" />
               <Skeleton className="h-32 w-full" />
@@ -364,6 +473,23 @@ const ProjectDetail = () => {
           Back to Dashboard
         </Button>
       </div>
+      
+      {/* Processing overlay for initial script generation */}
+      <ProcessingOverlay 
+        isOpen={showInitProcessing}
+        title="Generating Draft Script"
+        steps={[]}
+        isInitializing={true}
+      />
+      
+      {/* Processing overlay for media generation */}
+      <ProcessingOverlay 
+        isOpen={showMediaProcessing}
+        title="Generating Media Assets"
+        steps={mediaProcessingSteps}
+        onClose={mediaProcessingSteps[0].isCompleted && mediaProcessingSteps[1].isCompleted ? 
+          () => setShowMediaProcessing(false) : undefined}
+      />
     </div>
   );
 };

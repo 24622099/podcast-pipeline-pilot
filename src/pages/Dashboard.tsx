@@ -9,14 +9,16 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import ProcessingOverlay from "@/components/ProcessingOverlay";
 
 const Dashboard = () => {
-  const { projects, createProject, setCurrentProject, isLoading } = usePodcast();
+  const { projects, createProject, setCurrentProject, isLoading: contextLoading } = usePodcast();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [newProjectTopic, setNewProjectTopic] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showProcessing, setShowProcessing] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -32,41 +34,14 @@ const Dashboard = () => {
     if (!newProjectName.trim() || !newProjectTopic.trim()) return;
     
     setIsSubmitting(true);
+    setIsCreateDialogOpen(false);
+    setShowProcessing(true);
     
     try {
-      // Send data to n8n webhook
-      const webhookUrl = "https://n8n.chichung.studio/webhook/NewProject";
-      
-      // Prepare the data to send - sending as direct JSON object
-      const webhookData = {
-        projectName: newProjectName,
-        projectTopic: newProjectTopic,
-        timestamp: new Date().toISOString()
-      };
-      
-      console.log("Sending data to n8n webhook:", webhookData);
-      
-      // Make the webhook request with proper Content-Type header
-      const webhookResponse = await fetch(webhookUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(webhookData), // This sends the object as proper JSON
-        mode: "no-cors", // This is needed for CORS handling
-      });
-      
-      // Since we're using no-cors, we proceed assuming success
-      toast({
-        title: "Request Sent",
-        description: "Your project has been submitted to the workflow engine.",
-      });
-      
       // Create the project in our app state
       const newProject = await createProject(newProjectName, newProjectTopic);
       
-      // Close the dialog and reset form
-      setIsCreateDialogOpen(false);
+      // Reset form fields
       setNewProjectName("");
       setNewProjectTopic("");
       
@@ -82,6 +57,7 @@ const Dashboard = () => {
       });
     } finally {
       setIsSubmitting(false);
+      setShowProcessing(false);
     }
   };
 
@@ -93,7 +69,7 @@ const Dashboard = () => {
           <Button 
             size="lg" 
             onClick={() => setIsCreateDialogOpen(true)} 
-            disabled={isLoading}
+            disabled={contextLoading}
           >
             <Plus className="mr-2 h-5 w-5" /> Create New Project
           </Button>
@@ -105,7 +81,7 @@ const Dashboard = () => {
             <p className="text-gray-500 mb-6">Create your first podcast project to get started</p>
             <Button 
               onClick={() => setIsCreateDialogOpen(true)} 
-              disabled={isLoading}
+              disabled={contextLoading}
             >
               <Plus className="mr-2 h-4 w-4" /> Create New Project
             </Button>
@@ -190,19 +166,21 @@ const Dashboard = () => {
             </Button>
             <Button
               onClick={handleCreateProject}
-              disabled={isSubmitting || isLoading || !newProjectName.trim() || !newProjectTopic.trim()}
+              disabled={isSubmitting || contextLoading || !newProjectName.trim() || !newProjectTopic.trim()}
             >
-              {isSubmitting ? (
-                <>
-                  <Loader className="mr-2 h-4 w-4 animate-spin" /> Processing...
-                </>
-              ) : (
-                "Start & Generate Draft Script"
-              )}
+              Create Project
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      
+      {/* Processing overlay */}
+      <ProcessingOverlay 
+        isOpen={showProcessing}
+        title="Creating New Project"
+        steps={[]}
+        isInitializing={true}
+      />
     </div>
   );
 };

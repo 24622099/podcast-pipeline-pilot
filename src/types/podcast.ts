@@ -48,7 +48,7 @@ export interface Project {
   imagePrompt?: string;
   imageUrl?: string;
   videoUrl?: string;
-  scriptData?: ScriptWebhookResponse; // Updated to use the correct interface
+  scriptData?: ScriptWebhookResponse;
 }
 
 export interface PodcastContextType {
@@ -60,4 +60,5 @@ export interface PodcastContextType {
   synchronizeProject: (projectId: string) => Promise<void>;
   approveScript: (projectId: string, script: string, scriptData?: ScriptWebhookResponse) => Promise<void>;
   approveImagePrompt: (projectId: string, imagePrompt: string) => Promise<void>;
+  generateMedia: (projectId: string) => Promise<void>;
 }
