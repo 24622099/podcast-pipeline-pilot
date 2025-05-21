@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
   Project, 
@@ -82,12 +83,12 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (webhookResponse) {
         console.log("Updating project with webhook data");
         
-        // Update project with received webhook data
+        // Update project with received webhook data, ensuring status is a valid WorkflowStage
         const updatedProjects = projects.map((p) => {
           if (p.id === projectId) {
-            const updatedProject = {
+            const updatedProject: Project = {
               ...p,
-              status: "draft_script",
+              status: "draft_script" as WorkflowStage, // Explicitly cast as WorkflowStage
               scriptData: webhookResponse
             };
             console.log("Project updated:", updatedProject.name, "with new status:", updatedProject.status);
@@ -100,9 +101,9 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
         
         // Update current project if it's the one being synchronized
         if (currentProject && currentProject.id === projectId) {
-          const updatedCurrentProject = {
+          const updatedCurrentProject: Project = {
             ...currentProject,
-            status: "draft_script",
+            status: "draft_script" as WorkflowStage, // Explicitly cast as WorkflowStage
             scriptData: webhookResponse
           };
           console.log("Current project updated with status:", updatedCurrentProject.status);

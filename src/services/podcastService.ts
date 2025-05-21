@@ -1,3 +1,4 @@
+
 import { Project, WorkflowStage, ScriptWebhookResponse } from "../types/podcast";
 
 // Local storage key
@@ -65,10 +66,10 @@ export const synchronizeProjectService = async (project: Project): Promise<Scrip
         
         // Check if the response is an array
         if (Array.isArray(responseData) && responseData.length > 0) {
-          return responseData[0]; // Extract the first item from the array response
+          return responseData[0] as ScriptWebhookResponse; // Explicitly cast as ScriptWebhookResponse
         } else {
           console.log("Returning direct response data");
-          return responseData; // Return the direct response if not an array
+          return responseData as ScriptWebhookResponse; // Explicitly cast as ScriptWebhookResponse
         }
       } else {
         console.error("Error response from webhook:", response.status);
