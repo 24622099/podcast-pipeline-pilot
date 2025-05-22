@@ -137,13 +137,13 @@ export const processApprovedScriptService = async (project: Project, script: str
   return undefined;
 };
 
-// Generate media (video and image)
-export const generateMediaService = async (project: Project): Promise<{videoUrl?: string, imageUrl?: string}> => {
+// Generate video
+export const generateVideoService = async (project: Project): Promise<{videoUrl?: string}> => {
   if (!project) return {};
   
   try {
-    // Step 1: Send to video generation webhook
-    const videoWebhookUrl = "https://n8n.chichung.studio/webhook-test/GenerateVid";
+    // Send to video generation webhook
+    const videoWebhookUrl = "https://n8n.chichung.studio/webhook-test/CreateVideo";
     
     // Format data to send to webhook (sending all project data)
     const projectData = {
@@ -175,10 +175,34 @@ export const generateMediaService = async (project: Project): Promise<{videoUrl?
       throw new Error(`Video webhook responded with status ${videoResponse.status}`);
     }
     
-    // Step 2: Send to image generation webhook
-    const imageWebhookUrl = "https://n8n.chichung.studio/webhook-test/GenerateImg";
+    // Return the URL from the response
+    return {
+      videoUrl: videoData?.videoUrl || videoData?.["Video URL"]
+    };
+  } catch (error) {
+    console.error("Error generating video:", error);
+    throw error;
+  }
+};
+
+// Generate image
+export const generateImageService = async (project: Project): Promise<{imageUrl?: string}> => {
+  if (!project) return {};
+  
+  try {
+    // Send to image generation webhook
+    const imageWebhookUrl = "https://n8n.chichung.studio/webhook-test/CreateIMG";
     
-    console.log("Requesting image generation:", projectData);
+    console.log("Requesting image generation for project:", project.id);
+    
+    // Format data to send
+    const projectData = {
+      projectId: project.id,
+      projectName: project.name,
+      projectTopic: project.topic,
+      currentStatus: project.status,
+      scriptData: project.scriptData
+    };
     
     // Send request to image generation webhook
     const imageResponse = await fetch(imageWebhookUrl, {
@@ -199,15 +223,32 @@ export const generateMediaService = async (project: Project): Promise<{videoUrl?
       throw new Error(`Image webhook responded with status ${imageResponse.status}`);
     }
     
-    // Return the URLs from the responses
+    // Return the URL from the response
     return {
-      videoUrl: videoData?.videoUrl || videoData?.["Video URL"],
       imageUrl: imageData?.imageUrl || imageData?.["Image URL"]
     };
   } catch (error) {
-    console.error("Error generating media:", error);
+    console.error("Error generating image:", error);
     throw error;
   }
+};
+
+// Generate media (handles both video and image separately)
+export const generateMediaService = async (project: Project): Promise<{videoUrl?: string, imageUrl?: string}> => {
+  // This function is kept for compatibility with existing code
+  // but internally it now calls separate functions for video and image generation
+  
+  // Step 1: Generate video first
+  const videoResult = await generateVideoService(project);
+  
+  // Step 2: Then generate image
+  const imageResult = await generateImageService(project);
+  
+  // Combine and return results
+  return {
+    videoUrl: videoResult.videoUrl,
+    imageUrl: imageResult.imageUrl
+  };
 };
 
 // Get the next project status

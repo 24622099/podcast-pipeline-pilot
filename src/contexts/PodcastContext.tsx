@@ -13,6 +13,8 @@ import {
   createProjectService,
   synchronizeProjectService,
   processApprovedScriptService,
+  generateVideoService,
+  generateImageService,
   generateMediaService,
   getNextStatus,
 } from "@/services/podcastService";
@@ -223,42 +225,139 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
   
-  const generateMedia = async (projectId: string): Promise<void> => {
+  // Generate video only
+  const generateVideo = async (projectId: string): Promise<string | undefined> => {
     setIsLoading(true);
     
     try {
       // Find the project
       const project = projects.find(p => p.id === projectId);
       
-      if (project) {
-        // Generate media (video and image)
-        const mediaResult = await generateMediaService(project);
-        
-        // Update project with media URLs
-        setProjects((prev) =>
-          prev.map((p) => {
-            if (p.id === projectId) {
-              return {
-                ...p,
-                status: "media_finalized" as WorkflowStage,
-                videoUrl: mediaResult.videoUrl || p.videoUrl,
-                imageUrl: mediaResult.imageUrl || p.imageUrl
-              };
-            }
-            return p;
-          })
-        );
-        
-        // Update current project if it's the one being processed
-        if (currentProject && currentProject.id === projectId) {
-          setCurrentProject({
-            ...currentProject,
-            status: "media_finalized" as WorkflowStage,
-            videoUrl: mediaResult.videoUrl || currentProject.videoUrl,
-            imageUrl: mediaResult.imageUrl || currentProject.imageUrl
-          });
-        }
+      if (!project) {
+        throw new Error("Project not found");
       }
+      
+      // Generate video
+      const videoResult = await generateVideoService(project);
+      
+      // Update project with video URL
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            return {
+              ...p,
+              videoUrl: videoResult.videoUrl || p.videoUrl
+            };
+          }
+          return p;
+        })
+      );
+      
+      // Update current project if it's the one being processed
+      if (currentProject && currentProject.id === projectId) {
+        setCurrentProject({
+          ...currentProject,
+          videoUrl: videoResult.videoUrl || currentProject.videoUrl
+        });
+      }
+      
+      return videoResult.videoUrl;
+    } catch (error) {
+      console.error("Failed to generate video:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Generate image only
+  const generateImage = async (projectId: string): Promise<string | undefined> => {
+    setIsLoading(true);
+    
+    try {
+      // Find the project
+      const project = projects.find(p => p.id === projectId);
+      
+      if (!project) {
+        throw new Error("Project not found");
+      }
+      
+      // Generate image
+      const imageResult = await generateImageService(project);
+      
+      // Update project with image URL
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            return {
+              ...p,
+              status: "media_finalized" as WorkflowStage,
+              imageUrl: imageResult.imageUrl || p.imageUrl
+            };
+          }
+          return p;
+        })
+      );
+      
+      // Update current project if it's the one being processed
+      if (currentProject && currentProject.id === projectId) {
+        setCurrentProject({
+          ...currentProject,
+          status: "media_finalized" as WorkflowStage,
+          imageUrl: imageResult.imageUrl || currentProject.imageUrl
+        });
+      }
+      
+      return imageResult.imageUrl;
+    } catch (error) {
+      console.error("Failed to generate image:", error);
+      throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // Complete media generation (for backward compatibility)
+  const generateMedia = async (projectId: string): Promise<{videoUrl?: string, imageUrl?: string}> => {
+    setIsLoading(true);
+    
+    try {
+      // Find the project
+      const project = projects.find(p => p.id === projectId);
+      
+      if (!project) {
+        throw new Error("Project not found");
+      }
+      
+      // Generate media (video and image)
+      const mediaResult = await generateMediaService(project);
+      
+      // Update project with media URLs
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            return {
+              ...p,
+              status: "media_finalized" as WorkflowStage,
+              videoUrl: mediaResult.videoUrl || p.videoUrl,
+              imageUrl: mediaResult.imageUrl || p.imageUrl
+            };
+          }
+          return p;
+        })
+      );
+      
+      // Update current project if it's the one being processed
+      if (currentProject && currentProject.id === projectId) {
+        setCurrentProject({
+          ...currentProject,
+          status: "media_finalized" as WorkflowStage,
+          videoUrl: mediaResult.videoUrl || currentProject.videoUrl,
+          imageUrl: mediaResult.imageUrl || currentProject.imageUrl
+        });
+      }
+      
+      return mediaResult;
     } catch (error) {
       console.error("Failed to generate media:", error);
       throw error;
@@ -278,6 +377,8 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
         synchronizeProject,
         approveScript,
         approveImagePrompt,
+        generateVideo,
+        generateImage,
         generateMedia,
       }}
     >

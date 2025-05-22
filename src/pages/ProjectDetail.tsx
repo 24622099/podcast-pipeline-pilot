@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -8,12 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { usePodcast } from "@/contexts/PodcastContext";
 import WorkflowProgress from "@/components/WorkflowProgress";
-import { Check, Cloud, RefreshCw, Pen } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import ScriptEditor from "@/components/ScriptEditor";
-import { ScriptWebhookResponse } from "@/types/podcast";  // Corrected import
+import { ProcessingStep, ScriptWebhookResponse } from "@/types/podcast";
 import { useToast } from "@/hooks/use-toast";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
+import BookAnimation from "@/components/BookAnimation";
+import MediaProcessingOverlay from "@/components/MediaProcessingOverlay";
 
 const ProjectDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -26,7 +27,8 @@ const ProjectDetail = () => {
     synchronizeProject,
     approveScript,
     approveImagePrompt,
-    generateMedia,
+    generateVideo,
+    generateImage,
   } = usePodcast();
   const { toast } = useToast();
 
@@ -37,8 +39,9 @@ const ProjectDetail = () => {
   const [imagePrompt, setImagePrompt] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [showInitProcessing, setShowInitProcessing] = useState(false);
+  const [showScriptProcessing, setShowScriptProcessing] = useState(false);
   const [showMediaProcessing, setShowMediaProcessing] = useState(false);
-  const [mediaProcessingSteps, setMediaProcessingSteps] = useState([
+  const [mediaProcessingSteps, setMediaProcessingSteps] = useState<ProcessingStep[]>([
     { id: "video", label: "Creating Video Content", isCompleted: false, isProcessing: false },
     { id: "image", label: "Generating Image", isCompleted: false, isProcessing: false }
   ]);
@@ -163,6 +166,8 @@ const ProjectDetail = () => {
           lastAction: "Approving script"
         }));
         
+        setShowScriptProcessing(true);
+        
         await approveScript(currentProject.id, compiledScript, updatedData);
         
         setDebugInfo(prev => ({
@@ -188,6 +193,8 @@ const ProjectDetail = () => {
           description: "There was a problem approving the script.",
           variant: "destructive",
         });
+      } finally {
+        setShowScriptProcessing(false);
       }
     }
   };
@@ -230,7 +237,7 @@ const ProjectDetail = () => {
     }
   };
 
-  // Handle media generation (video and image)
+  // Handle sequential media generation (video and image)
   const handleGenerateMedia = async () => {
     if (currentProject) {
       try {
@@ -250,8 +257,24 @@ const ProjectDetail = () => {
           )
         );
         
-        // Start media generation
-        await generateMedia(currentProject.id);
+        // Step 1: Generate video first
+        const videoUrl = await generateVideo(currentProject.id);
+        console.log("Video generated, URL:", videoUrl);
+        
+        // Update steps status - mark video as complete, start image processing
+        setMediaProcessingSteps(prev => 
+          prev.map(step => 
+            step.id === "video" 
+              ? { ...step, isProcessing: false, isCompleted: true }
+              : step.id === "image"
+                ? { ...step, isProcessing: true, isCompleted: false }
+                : step
+          )
+        );
+        
+        // Step 2: Then generate image
+        const imageUrl = await generateImage(currentProject.id);
+        console.log("Image generated, URL:", imageUrl);
         
         setDebugInfo(prev => ({
           ...prev,
@@ -259,11 +282,14 @@ const ProjectDetail = () => {
           currentStatus: "media_finalized"
         }));
         
-        // Update steps status - mark video as complete, image as complete
-        setMediaProcessingSteps([
-          { id: "video", label: "Video Content Created", isCompleted: true, isProcessing: false },
-          { id: "image", label: "Image Generated Successfully", isCompleted: true, isProcessing: false }
-        ]);
+        // Update steps status - mark image as complete
+        setMediaProcessingSteps(prev => 
+          prev.map(step => 
+            step.id === "image" 
+              ? { ...step, isProcessing: false, isCompleted: true }
+              : step
+          )
+        );
         
         toast({
           title: "Success",
@@ -589,7 +615,7 @@ const ProjectDetail = () => {
 
         {/* Dynamic content based on project stage */}
         <div className="p-6">
-          {contextLoading && !showInitProcessing && !showMediaProcessing ? (
+          {contextLoading && !showInitProcessing && !showScriptProcessing && !showMediaProcessing ? (
             <div className="animate-pulse space-y-4">
               <Skeleton className="h-8 w-1/3" />
               <Skeleton className="h-32 w-full" />
@@ -620,10 +646,17 @@ const ProjectDetail = () => {
         isInitializing={true}
       />
       
-      {/* Processing overlay for media generation */}
-      <ProcessingOverlay 
+      {/* Book Animation for script processing */}
+      <div className={`fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center transition-opacity duration-300 ${showScriptProcessing ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className="bg-white rounded-lg p-8 w-full max-w-md shadow-xl">
+          <BookAnimation isLoading={showScriptProcessing} message="Processing script..." />
+          <p className="text-center text-gray-500 mt-4">Analyzing and formatting your content</p>
+        </div>
+      </div>
+      
+      {/* Media Processing Overlay with sequential steps */}
+      <MediaProcessingOverlay 
         isOpen={showMediaProcessing}
-        title="Generating Media Assets"
         steps={mediaProcessingSteps}
         onClose={mediaProcessingSteps[0].isCompleted && mediaProcessingSteps[1].isCompleted ? 
           () => setShowMediaProcessing(false) : undefined}
@@ -633,4 +666,3 @@ const ProjectDetail = () => {
 };
 
 export default ProjectDetail;
-

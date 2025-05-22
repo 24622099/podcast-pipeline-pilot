@@ -1,32 +1,30 @@
 
-// Define the workflow stages as a type and also export as constants
-export type WorkflowStage = "initialize" | "draft_script" | "approve_script" | "draft_image_prompt" | "approve_image_prompt" | "media_finalized";
+// Types for the podcast application
 
-// Export workflowStages as an array of objects with id and label
+// Workflow stages
 export const workflowStages = [
-  { id: "initialize", label: "Initialize" },
-  { id: "draft_script", label: "Draft Script" },
-  { id: "approve_script", label: "Approve Script" },
-  { id: "draft_image_prompt", label: "Draft Image" },
-  { id: "approve_image_prompt", label: "Approve Image" },
-  { id: "media_finalized", label: "Finalized" },
-];
+  "initialize",
+  "draft_script", 
+  "approve_script",
+  "draft_image_prompt",
+  "approve_image_prompt",
+  "media_finalized",
+] as const;
 
-// Interface for the webhook response structure
+// Type representing the workflow stages
+export type WorkflowStage = typeof workflowStages[number];
+
+// Response shape from the script webhook
 export interface ScriptWebhookResponse {
-  "Project Name": string;
-  "Keyword ID": string;
-  "Keyword URL": string;
-  "Date Created": string;
   "Project ID": string;
+  "Project Name": string;
   "Folder ID": string;
   "Folder URL": string;
-  "Video ID": string;
-  "Video URL": string;
-  "Image ID": string;
-  "Image URL": string;
   "ScriptDoc ID": string;
   "ScriptDoc URL": string;
+  "Date Created": string;
+  "Keyword ID": string;
+  "Keyword URL": string;
   "Opening Hook": string;
   "Part 1": string;
   "Part 2": string;
@@ -37,28 +35,41 @@ export interface ScriptWebhookResponse {
   "Vocab 4": string;
   "Vocab 5": string;
   "Grammar Topic": string;
+  [key: string]: string | undefined;
 }
 
+// Project model
 export interface Project {
   id: string;
   name: string;
   topic: string;
   status: WorkflowStage;
   script?: string;
-  imagePrompt?: string;
-  imageUrl?: string;
-  videoUrl?: string;
   scriptData?: ScriptWebhookResponse;
+  imagePrompt?: string;
+  videoUrl?: string;
+  imageUrl?: string;
 }
 
+// Step for processing overlay
+export interface ProcessingStep {
+  id: string;
+  label: string;
+  isCompleted: boolean;
+  isProcessing: boolean;
+}
+
+// Context type
 export interface PodcastContextType {
   projects: Project[];
   currentProject: Project | null;
   isLoading: boolean;
   createProject: (name: string, topic: string) => Promise<Project>;
-  setCurrentProject: (project: Project) => void;
+  setCurrentProject: (project: Project | null) => void;
   synchronizeProject: (projectId: string) => Promise<void>;
   approveScript: (projectId: string, script: string, scriptData?: ScriptWebhookResponse) => Promise<void>;
   approveImagePrompt: (projectId: string, imagePrompt: string) => Promise<void>;
-  generateMedia: (projectId: string) => Promise<void>;
+  generateVideo: (projectId: string) => Promise<string | undefined>;
+  generateImage: (projectId: string) => Promise<string | undefined>;
+  generateMedia: (projectId: string) => Promise<{videoUrl?: string, imageUrl?: string}>;
 }
