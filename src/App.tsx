@@ -24,9 +24,9 @@ const App = () => (
             <Route path="/welcome" element={<Index />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Toaster />
+          <Sonner />
         </BrowserRouter>
-        <Toaster />
-        <Sonner />
       </TooltipProvider>
     </PodcastProvider>
   </QueryClientProvider>
