@@ -8,7 +8,7 @@ import Index from "./pages/Index";
 import Dashboard from "./pages/Dashboard";
 import ProjectDetail from "./pages/ProjectDetail";
 import NotFound from "./pages/NotFound";
-import { PodcastProvider } from "./contexts/PodcastContext";
+import { PodcastProvider } from "./contexts/podcast";
 
 // Create a new QueryClient instance
 const queryClient = new QueryClient();
