@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, Save } from "lucide-react";
+import { Check, Save, ArrowRight } from "lucide-react";
 import { ScriptWebhookResponse } from "@/types/podcast";
+import { usePodcast } from "@/contexts/PodcastContext";
 
 interface ScriptEditorProps {
   webhookData: ScriptWebhookResponse;
@@ -14,7 +15,9 @@ interface ScriptEditorProps {
 }
 
 const ScriptEditor = ({ webhookData, onSave, isLoading }: ScriptEditorProps) => {
+  const { currentProject, advanceToImagePrompt } = usePodcast();
   const [isSaving, setIsSaving] = useState(false);
+  const [isAdvancing, setIsAdvancing] = useState(false);
   const [scriptFields, setScriptFields] = useState({
     openingHook: "",
     part1: "",
@@ -105,6 +108,18 @@ ${scriptFields.grammarTopic}
       await onSave(compiledScript, updatedWebhookData);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  // Handle advancing to the image prompt stage
+  const handleAdvanceToImagePrompt = async () => {
+    if (!currentProject) return;
+    
+    setIsAdvancing(true);
+    try {
+      await advanceToImagePrompt(currentProject.id);
+    } finally {
+      setIsAdvancing(false);
     }
   };
 
@@ -315,14 +330,24 @@ ${scriptFields.grammarTopic}
         </div>
       </div>
       
-      <div className="flex justify-end mt-6">
+      <div className="flex justify-between mt-6">
         <Button 
           onClick={handleSaveAndApprove} 
-          className="bg-green-600 hover:bg-green-700"
+          className="bg-blue-600 hover:bg-blue-700"
           disabled={isSaving || isLoading}
         >
+          <Save className="mr-2 h-4 w-4" />
+          {isSaving ? "Saving..." : "Save Changes"}
+        </Button>
+
+        <Button 
+          onClick={handleAdvanceToImagePrompt} 
+          className="bg-green-600 hover:bg-green-700"
+          disabled={isAdvancing || isLoading}
+        >
           <Check className="mr-2 h-4 w-4" />
-          {isSaving ? "Processing..." : "Approve Script & Continue"}
+          {isAdvancing ? "Processing..." : "Complete & Continue"}
+          <ArrowRight className="ml-2 h-4 w-4" />
         </Button>
       </div>
     </div>

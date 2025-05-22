@@ -41,10 +41,10 @@ const ProjectDetail = () => {
   const [showInitProcessing, setShowInitProcessing] = useState(false);
   const [showScriptProcessing, setShowScriptProcessing] = useState(false);
   const [showMediaProcessing, setShowMediaProcessing] = useState(false);
-  const [mediaProcessingSteps, setMediaProcessingSteps] = useState<ProcessingStep[]>([
+  const mediaProcessingSteps = [
     { id: "video", label: "Creating Video Content", isCompleted: false, isProcessing: false },
     { id: "image", label: "Generating Image", isCompleted: false, isProcessing: false }
-  ]);
+  ];
   
   // Webhook data state
   const [webhookData, setWebhookData] = useState<ScriptWebhookResponse | null>(null);
@@ -178,7 +178,7 @@ const ProjectDetail = () => {
         
         toast({
           title: "Success",
-          description: "Script has been approved successfully.",
+          description: "Script has been saved successfully. You can now edit the script fields or proceed to the next step.",
         });
       } catch (error) {
         console.error("Error approving script:", error);
@@ -190,7 +190,7 @@ const ProjectDetail = () => {
         
         toast({
           title: "Error",
-          description: "There was a problem approving the script.",
+          description: "There was a problem saving the script.",
           variant: "destructive",
         });
       } finally {

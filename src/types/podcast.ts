@@ -68,6 +68,7 @@ export interface PodcastContextType {
   setCurrentProject: (project: Project | null) => void;
   synchronizeProject: (projectId: string) => Promise<void>;
   approveScript: (projectId: string, script: string, scriptData?: ScriptWebhookResponse) => Promise<void>;
+  advanceToImagePrompt: (projectId: string) => Promise<void>; // New function to manually advance to image prompt
   approveImagePrompt: (projectId: string, imagePrompt: string) => Promise<void>;
   generateVideo: (projectId: string) => Promise<string | undefined>;
   generateImage: (projectId: string) => Promise<string | undefined>;

@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { 
   Project, 
@@ -158,12 +157,14 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (webhookResponse) {
           console.log("Received response from script processing webhook:", webhookResponse);
           
-          // Update the project with the new data and move to draft_image_prompt
+          // IMPORTANT FIX: After receiving the webhook response, 
+          // we should keep the status as "approve_script" to allow editing the data
+          // instead of advancing to "draft_image_prompt"
           const projectsWithProcessedScript = projects.map((p) => {
             if (p.id === projectId) {
               return {
                 ...p,
-                status: "draft_image_prompt" as WorkflowStage,
+                status: "approve_script" as WorkflowStage, // Keep at approve_script instead of changing to draft_image_prompt
                 scriptData: {
                   ...p.scriptData,
                   ...webhookResponse
@@ -179,7 +180,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (currentProject && currentProject.id === projectId) {
             setCurrentProject({
               ...currentProject,
-              status: "draft_image_prompt" as WorkflowStage,
+              status: "approve_script" as WorkflowStage, // Keep at approve_script instead of changing to draft_image_prompt
               scriptData: {
                 ...currentProject.scriptData,
                 ...webhookResponse
@@ -191,6 +192,36 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     } catch (error) {
       console.error("Failed to process approved script:", error);
       throw error;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Function to manually advance to the next stage (to be used after editing webhook 2 data)
+  const advanceToImagePrompt = async (projectId: string): Promise<void> => {
+    setIsLoading(true);
+    
+    try {
+      // Update project status to draft_image_prompt
+      setProjects((prev) =>
+        prev.map((p) => {
+          if (p.id === projectId) {
+            return {
+              ...p,
+              status: "draft_image_prompt" as WorkflowStage,
+            };
+          }
+          return p;
+        })
+      );
+      
+      // Update current project if it's the one being advanced
+      if (currentProject && currentProject.id === projectId) {
+        setCurrentProject({
+          ...currentProject,
+          status: "draft_image_prompt" as WorkflowStage,
+        });
+      }
     } finally {
       setIsLoading(false);
     }
@@ -377,6 +408,7 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setCurrentProject,
         synchronizeProject,
         approveScript,
+        advanceToImagePrompt, // Add the new function to the context
         approveImagePrompt,
         generateVideo,
         generateImage,
