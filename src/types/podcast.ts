@@ -1,18 +1,18 @@
 
 // Types for the podcast application
 
-// Workflow stages
+// Workflow stages with their properties
 export const workflowStages = [
-  "initialize",
-  "draft_script", 
-  "approve_script",
-  "draft_image_prompt",
-  "approve_image_prompt",
-  "media_finalized",
+  { id: "initialize", label: "Initialize" },
+  { id: "draft_script", label: "Draft Script" },
+  { id: "approve_script", label: "Approve Script" },
+  { id: "draft_image_prompt", label: "Draft Image Prompt" },
+  { id: "approve_image_prompt", label: "Approve Image Prompt" },
+  { id: "media_finalized", label: "Media Finalized" },
 ] as const;
 
-// Type representing the workflow stages
-export type WorkflowStage = typeof workflowStages[number];
+// Type representing the workflow stage IDs
+export type WorkflowStage = typeof workflowStages[number]['id'];
 
 // Response shape from the script webhook
 export interface ScriptWebhookResponse {
@@ -73,3 +73,13 @@ export interface PodcastContextType {
   generateImage: (projectId: string) => Promise<string | undefined>;
   generateMedia: (projectId: string) => Promise<{videoUrl?: string, imageUrl?: string}>;
 }
+
+// Helper function to get workflow stage by ID
+export const getWorkflowStageById = (id: WorkflowStage) => {
+  return workflowStages.find(stage => stage.id === id);
+};
+
+// Helper function to get all workflow stages
+export const getAllWorkflowStages = () => {
+  return workflowStages;
+};
