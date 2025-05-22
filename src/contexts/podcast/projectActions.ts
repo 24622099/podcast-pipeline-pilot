@@ -151,10 +151,10 @@ export const approveScript = async (
       if (webhookResponse) {
         console.log("Received response from script processing webhook:", webhookResponse);
         
-        // Keep the status as "approve_script" to allow editing
+        // Update to review_script_data status to show the new interface
         const projectWithProcessedScript: Project = {
           ...updatedProject,
-          status: "approve_script" as WorkflowStage,
+          status: "review_script_data" as WorkflowStage,
           scriptData: {
             ...updatedProject.scriptData,
             ...webhookResponse
@@ -168,6 +168,40 @@ export const approveScript = async (
   } catch (error) {
     console.error("Failed to process approved script:", error);
     throw error;
+  } finally {
+    dispatch(setLoading(false));
+  }
+};
+
+// New function to advance to the next workflow stage
+export const advanceToNextStage = async (
+  dispatch: Dispatch<ProjectStateAction>,
+  state: { projects: Project[], currentProject: Project | null },
+  projectId: string
+): Promise<void> => {
+  dispatch(setLoading(true));
+  
+  try {
+    const project = state.projects.find(p => p.id === projectId);
+    
+    if (!project) {
+      throw new Error("Project not found");
+    }
+    
+    // Get the next status in the workflow
+    const nextStatus = getNextStatus(project.status);
+    
+    const updatedProject: Project = {
+      ...project,
+      status: nextStatus
+    };
+    
+    dispatch(updateProject(updatedProject));
+    
+    // Update current project if it's the one being advanced
+    if (state.currentProject && state.currentProject.id === projectId) {
+      dispatch(setCurrentProject(updatedProject));
+    }
   } finally {
     dispatch(setLoading(false));
   }

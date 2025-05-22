@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import WorkflowProgress from "@/components/WorkflowProgress";
 import { Check, RefreshCw } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import ScriptEditor from "@/components/ScriptEditor";
+import ScriptDataReview from "@/components/ScriptDataReview";
 import { ProcessingStep, ScriptWebhookResponse } from "@/types/podcast";
 import { useToast } from "@/hooks/use-toast";
 import ProcessingOverlay from "@/components/ProcessingOverlay";
@@ -30,6 +30,8 @@ const ProjectDetail = () => {
     approveImagePrompt,
     generateVideo,
     generateImage,
+    advanceToNextStage,
+    getNextStatus
   } = usePodcast();
   const { toast } = useToast();
 
@@ -320,6 +322,44 @@ const ProjectDetail = () => {
     }
   };
 
+  // Handle advancing to the next stage
+  const handleAdvanceToNextStage = async () => {
+    if (currentProject) {
+      try {
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Advancing to next stage"
+        }));
+        
+        await advanceToNextStage(currentProject.id);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Advanced to next stage",
+          currentStatus: getNextStatus(currentProject.status)
+        }));
+        
+        toast({
+          title: "Success",
+          description: "Advanced to the next stage successfully.",
+        });
+      } catch (error) {
+        console.error("Error advancing to next stage:", error);
+        
+        setDebugInfo(prev => ({
+          ...prev,
+          lastAction: "Advancing failed"
+        }));
+        
+        toast({
+          title: "Error",
+          description: "There was a problem advancing to the next stage.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
   // Determine which stage content to render based on the current project status
   const renderStageContent = () => {
     const isLoading = contextLoading || isProcessing;
@@ -393,6 +433,25 @@ const ProjectDetail = () => {
             ) : (
               <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
                 <p className="text-yellow-700">No script data available. Please go back to the initialization step.</p>
+              </div>
+            )}
+          </div>
+        );
+
+      case "review_script_data":
+        return (
+          <div className="space-y-4">
+            <h2 className="text-xl font-semibold">Step 3: Review Script Data</h2>
+            
+            {webhookData ? (
+              <ScriptDataReview 
+                scriptData={webhookData}
+                onContinue={handleAdvanceToNextStage}
+                isLoading={isLoading}
+              />
+            ) : (
+              <div className="bg-yellow-50 p-4 rounded-md border border-yellow-200">
+                <p className="text-yellow-700">No script data available. Please go back to the script editing step.</p>
               </div>
             )}
           </div>

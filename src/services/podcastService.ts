@@ -1,4 +1,3 @@
-
 import { Project, WorkflowStage, ScriptWebhookResponse } from "../types/podcast";
 
 // Local storage key
@@ -259,6 +258,8 @@ export const getNextStatus = (currentStatus: WorkflowStage): WorkflowStage => {
     case "draft_script":
       return "approve_script";
     case "approve_script":
+      return "review_script_data";
+    case "review_script_data":
       return "draft_image_prompt";
     case "draft_image_prompt":
       return "approve_image_prompt";

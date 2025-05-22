@@ -8,6 +8,7 @@ import {
   createProject as createProjectAction,
   synchronizeProject as synchronizeProjectAction,
   approveScript as approveScriptAction,
+  advanceToNextStage as advanceToNextStageAction,
   advanceToImagePrompt as advanceToImagePromptAction,
   approveImagePrompt as approveImagePromptAction,
   generateVideo as generateVideoAction,
@@ -66,6 +67,10 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     approveScript: async (projectId: string, script: string, scriptData?: ScriptWebhookResponse) => {
       await approveScriptAction(dispatch, state, projectId, script, scriptData);
+    },
+    
+    advanceToNextStage: async (projectId: string) => {
+      await advanceToNextStageAction(dispatch, state, projectId);
     },
     
     advanceToImagePrompt: async (projectId: string) => {

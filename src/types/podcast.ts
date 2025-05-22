@@ -6,6 +6,7 @@ export const workflowStages = [
   { id: "initialize", label: "Initialize" },
   { id: "draft_script", label: "Draft Script" },
   { id: "approve_script", label: "Approve Script" },
+  { id: "review_script_data", label: "Review Script Data" }, // New stage
   { id: "draft_image_prompt", label: "Draft Image Prompt" },
   { id: "approve_image_prompt", label: "Approve Image Prompt" },
   { id: "media_finalized", label: "Media Finalized" },
@@ -68,7 +69,8 @@ export interface PodcastContextType {
   setCurrentProject: (project: Project | null) => void;
   synchronizeProject: (projectId: string) => Promise<void>;
   approveScript: (projectId: string, script: string, scriptData?: ScriptWebhookResponse) => Promise<void>;
-  advanceToImagePrompt: (projectId: string) => Promise<void>; // New function to manually advance to image prompt
+  advanceToNextStage: (projectId: string) => Promise<void>; // New function to move to next stage
+  advanceToImagePrompt: (projectId: string) => Promise<void>; // Existing function to manually advance to image prompt
   approveImagePrompt: (projectId: string, imagePrompt: string) => Promise<void>;
   generateVideo: (projectId: string) => Promise<string | undefined>;
   generateImage: (projectId: string) => Promise<string | undefined>;
