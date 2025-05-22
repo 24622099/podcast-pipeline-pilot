@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -41,10 +42,10 @@ const ProjectDetail = () => {
   const [showInitProcessing, setShowInitProcessing] = useState(false);
   const [showScriptProcessing, setShowScriptProcessing] = useState(false);
   const [showMediaProcessing, setShowMediaProcessing] = useState(false);
-  const mediaProcessingSteps = [
+  const [mediaProcessingSteps, setMediaProcessingSteps] = useState<ProcessingStep[]>([
     { id: "video", label: "Creating Video Content", isCompleted: false, isProcessing: false },
     { id: "image", label: "Generating Image", isCompleted: false, isProcessing: false }
-  ];
+  ]);
   
   // Webhook data state
   const [webhookData, setWebhookData] = useState<ScriptWebhookResponse | null>(null);
