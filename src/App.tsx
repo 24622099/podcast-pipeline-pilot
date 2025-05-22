@@ -10,6 +10,7 @@ import ProjectDetail from "./pages/ProjectDetail";
 import NotFound from "./pages/NotFound";
 import { PodcastProvider } from "./contexts/PodcastContext";
 
+// Create a new QueryClient instance
 const queryClient = new QueryClient();
 
 const App = () => (
