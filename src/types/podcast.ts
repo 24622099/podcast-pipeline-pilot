@@ -75,6 +75,7 @@ export interface PodcastContextType {
   generateVideo: (projectId: string) => Promise<string | undefined>;
   generateImage: (projectId: string) => Promise<string | undefined>;
   generateMedia: (projectId: string) => Promise<{videoUrl?: string, imageUrl?: string}>;
+  getNextStatus: (currentStatus: WorkflowStage) => WorkflowStage; // Add getNextStatus function
 }
 
 // Helper function to get workflow stage by ID

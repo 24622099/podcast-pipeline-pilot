@@ -15,6 +15,7 @@ import {
   generateImage as generateImageAction,
   generateMedia as generateMediaAction
 } from "./projectActions";
+import { getNextStatus } from "@/services/podcastService";
 
 // Create the context
 const PodcastContext = createContext<PodcastContextType | undefined>(undefined);
@@ -91,7 +92,10 @@ export const PodcastProvider: React.FC<{ children: React.ReactNode }> = ({ child
     
     generateMedia: async (projectId: string) => {
       return await generateMediaAction(dispatch, state, projectId);
-    }
+    },
+    
+    // Add getNextStatus function to the context
+    getNextStatus
   };
 
   return (
